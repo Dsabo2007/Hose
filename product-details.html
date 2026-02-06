@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تفاصيل المنتج - متجر ألعاب الطاولة</title>
+    <link rel="icon" type="image/png" href="image/Mascot.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+    <script src="products.js"></script>
+</head>
+
+<body class="bg-gray-50 flex flex-col min-h-screen">
+
+    <nav class="glass sticky top-0 z-50 shadow-sm">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <a href="index.html" class="flex items-center gap-2">
+                <img src="image/Arabic logo.png" alt="Logo" class="h-10 w-auto">
+                <span class="font-bold text-xl text-indigo-700 hidden sm:block">ألعاب الطاولة</span>
+            </a>
+            <div class="hidden md:flex gap-6  font-medium">
+                <a href="index.html" class="text-gray-600 hover:text-indigo-800 transition">الرئيسية</a>
+                <a href="products.html" class="text-gray-600 hover:text-indigo-800 transition">المنتجات</a>
+            </div>
+            <div class="flex items-center gap-4">
+                <a href="cart.html" class="relative hover-scale">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-indigo-700" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    <span id="cart-count"
+                        class="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center hidden">0</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-4 py-16 flex-grow flex items-center justify-center">
+        <div id="product-detail-container"
+            class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden max-w-5xl w-full flex flex-col md:flex-row py-8">
+            <!-- Injected Content -->
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-indigo-900 text-indigo-200 py-6 mt-auto">
+        <div class="container mx-auto px-4 text-center">
+            <p class="text-sm">&copy; 2026 جميع الحقوق محفوظة.</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const productId = urlParams.get('id');
+            const container = document.getElementById('product-detail-container');
+
+            if (!productId) {
+                container.innerHTML = '<div class="p-10 text-center w-full">لم يتم تحديد منتج. <a href="products.html" class="text-indigo-600">عودة للمنتجات</a></div>';
+                return;
+            }
+
+            const product = getProductById(productId);
+
+            if (!product) {
+                container.innerHTML = '<div class="p-10 text-center w-full">المنتج غير موجود. <a href="products.html" class="text-indigo-600">عودة للمنتجات</a></div>';
+                return;
+            }
+
+            const hasDiscount = product.originalPrice && product.originalPrice > product.price;
+
+            container.innerHTML = `
+                <div class="md:w-1/2 p-8 flex items-center justify-center bg-gray-50">
+                    <img src="${product.image}" alt="${product.name}" class="max-h-[400px] object-contain hover:scale-110 transition duration-500 drop-shadow-lg">
+                </div>
+                <div class="md:w-1/2 p-10 flex flex-col justify-center">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-indigo-500 font-bold uppercase tracking-widest text-sm">${getCategoryName(product.category)}</span>
+                        ${hasDiscount ? '<span class="bg-red-500 text-white text-sm font-bold px-3 py-1 rounded-full animate-pulse">تخفبضات! 🔥</span>' : ''}
+                    </div>
+                    
+                    <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4 leading-tight">${product.name}</h1>
+                    <p class="text-gray-600 text-lg leading-relaxed mb-8">${product.description}</p>
+                    
+                    <div class="flex items-center gap-6 mb-8">
+                        ${hasDiscount ? `
+                            <div class="flex flex-col">
+                                <span class="text-gray-400 line-through text-lg">${formatPrice(product.originalPrice)}</span>
+                                <span class="text-3xl font-bold text-red-600">${formatPrice(product.price)}</span>
+                            </div>
+                        ` : `<span class="text-3xl font-bold text-indigo-700">${formatPrice(product.price)}</span>`}
+                    </div>
+
+                    <div class="flex gap-4">
+                        <button onclick="addToCart(${product.id})" class="flex-grow bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition transform hover:-translate-y-1 flex items-center justify-center gap-2">
+                             أضف للسلة <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                        </button>
+                    </div>
+                     <div class="mt-6 pt-6 border-t border-gray-100">
+                        <a href="products.html" class="text-gray-500 hover:text-indigo-600 transition flex items-center gap-2">
+                            &larr; عودة للتسوق
+                        </a>
+                     </div>
+                </div>
+            `;
+        });
+    </script>
+</body>
+
+</html>

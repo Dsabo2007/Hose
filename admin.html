@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة التحكم - متجر ألعاب الطاولة</title>
+    <link rel="icon" type="image/png" href="image/Mascot.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+    <script src="products.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #68D391;
+        }
+
+        .toggle-checkbox:checked+.toggle-label {
+            background-color: #68D391;
+        }
+
+        .toggle-checkbox {
+            right: 0;
+            z-index: 1;
+            border-color: #ccc;
+            transition: all 0.3s;
+        }
+
+        .toggle-label {
+            width: 40px;
+            height: 20px;
+            background-color: #ccc;
+            border-radius: 9999px;
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .toggle-label:after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 16px;
+            height: 16px;
+            background-color: white;
+            border-radius: 50%;
+            transition: all 0.3s;
+        }
+
+        .toggle-input:checked+.toggle-label {
+            background-color: #4F46E5;
+        }
+
+        .toggle-input:checked+.toggle-label:after {
+            left: calc(100% - 2px);
+            transform: translateX(-100%);
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 font-sans flex h-screen overflow-hidden text-gray-800">
+
+    <!-- Login Overlay -->
+    <div id="login-overlay"
+        class="fixed inset-0 z-[100] bg-indigo-900 flex flex-col items-center justify-center transition-all duration-500">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md text-center transform transition-all scale-100"
+            id="login-box">
+            <div class="mb-6">
+                <!-- Fallback logo or icon if image fails -->
+                <div
+                    class="w-20 h-20 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4 text-indigo-600 text-3xl">
+                    <i class="fas fa-lock"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-800">لوحة تحكم هوس</h2>
+                <p class="text-gray-500 text-sm mt-2">الرجاء تسجيل الدخول للمتابعة</p>
+            </div>
+
+            <form onsubmit="handleLogin(event)" class="space-y-4">
+                <div class="relative">
+                    <input type="password" id="login-password" placeholder="كلمة المرور"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-gray-50 text-center text-lg tracking-widest transition"
+                        required>
+                </div>
+                <button type="submit"
+                    class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg transform transition active:scale-95">
+                    دخول
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <aside class="bg-indigo-900 text-white w-64 flex-shrink-0 flex flex-col shadow-2xl z-20 hidden md:flex">
+        <div class="p-6 text-center border-b border-indigo-800">
+            <h1 class="text-2xl font-bold">لوحة التحكم</h1>
+            <p class="text-indigo-300 text-sm">متجر الألعاب</p>
+        </div>
+        <nav class="flex-grow p-4 space-y-2">
+            <a href="#" onclick="showView('products')" id="nav-products"
+                class="block py-3 px-4 rounded-lg bg-indigo-800 text-white font-bold flex items-center gap-3 transition">
+                <i class="fas fa-box"></i> المنتجات
+            </a>
+            <a href="#" onclick="showView('orders')" id="nav-orders"
+                class="block py-3 px-4 rounded-lg text-indigo-300 hover:bg-indigo-800 hover:text-white font-bold flex items-center justify-between transition">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-shopping-cart"></i> الطلبات الواردة
+                </div>
+                <span id="orders-badge"
+                    class="bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full hidden">0</span>
+            </a>
+            <a href="#" onclick="showView('messages')" id="nav-messages"
+                class="block py-3 px-4 rounded-lg text-indigo-300 hover:bg-indigo-800 hover:text-white font-bold flex items-center gap-3 transition">
+                <i class="fas fa-envelope"></i> الرسائل والبلاغات
+            </a>
+            <a href="index.html"
+                class="block py-3 px-4 rounded-lg text-indigo-300 hover:bg-indigo-800 hover:text-white transition flex items-center gap-3">
+                <i class="fas fa-store"></i> عرض المتجر
+            </a>
+
+            <div class="pt-4 mt-4 border-t border-indigo-800/50">
+                <button onclick="openChangePasswordModal()"
+                    class="w-full py-3 px-4 rounded-lg text-indigo-300 hover:bg-indigo-800 hover:text-white transition flex items-center gap-3 text-right">
+                    <i class="fas fa-key"></i> تغيير كلمة المرور
+                </button>
+                <button onclick="logout()"
+                    class="w-full py-3 px-4 rounded-lg text-red-300 hover:bg-red-900/50 hover:text-red-200 transition flex items-center gap-3 text-right mt-1">
+                    <i class="fas fa-sign-out-alt"></i> تسجيل الخروج
+                </button>
+            </div>
+        </nav>
+        <div class="p-4 border-t border-indigo-800 text-center text-xs text-indigo-400">
+            &copy; 2026 جميع الحقوق محفوظة
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-grow flex flex-col overflow-hidden relative">
+        <header class="bg-white shadow-sm p-4 flex justify-between items-center z-10">
+            <div class="flex items-center gap-4">
+                <button id="mobile-menu-toggle" class="md:hidden text-gray-600 focus:outline-none">
+                    <i class="fas fa-bars text-2xl"></i>
+                </button>
+                <h2 id="page-title" class="text-xl font-bold text-gray-800">إدارة المنتجات</h2>
+            </div>
+            <div class="flex gap-2" id="header-actions">
+                <button onclick="openCurrencyModal()"
+                    class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg shadow transition flex items-center gap-2">
+                    <i class="fas fa-coins"></i> العملات
+                </button>
+                <button onclick="openCategoryManagementModal()"
+                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg shadow transition flex items-center gap-2">
+                    <i class="fas fa-layer-group"></i> إدارة الفئات
+                </button>
+                <button onclick="openProductModal()"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow transition flex items-center gap-2">
+                    <i class="fas fa-plus"></i> إضافة منتج
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-grow overflow-auto p-6">
+            <!-- PRODUCTS VIEW -->
+            <div id="products-view">
+                <!-- Stats -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div
+                        class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm">إجمالي المنتجات</p>
+                            <h3 class="text-3xl font-bold text-gray-800" id="total-count">0</h3>
+                        </div>
+                        <div class="bg-indigo-100 text-indigo-600 p-3 rounded-full"><i class="fas fa-cubes text-xl"></i>
+                        </div>
+                    </div>
+                    <div
+                        class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm">المنتجات المميزة</p>
+                            <h3 class="text-3xl font-bold text-yellow-600" id="featured-count">0</h3>
+                        </div>
+                        <div class="bg-yellow-100 text-yellow-600 p-3 rounded-full"><i class="fas fa-star text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-right">
+                            <thead class="bg-gray-50 text-gray-600 text-sm font-semibold uppercase tracking-wider">
+                                <tr>
+                                    <th class="p-4 w-20">الصورة</th>
+                                    <th class="p-4">اسم المنتج</th>
+                                    <th class="p-4">السعر</th>
+                                    <th class="p-4">الفئة</th>
+                                    <th class="p-4 text-center">مميز</th>
+                                    <th class="p-4 text-center">إجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="products-table-body" class="divide-y divide-gray-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ORDERS VIEW -->
+            <div id="orders-view" class="hidden animate-fade-in">
+                <h2 class="text-3xl font-bold mb-8 text-indigo-900 border-b pb-4 flex items-center gap-3">
+                    <i class="fas fa-shopping-cart"></i> الطلبات الواردة
+                </h2>
+
+                <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+                    <table class="w-full text-right">
+                        <thead class="bg-indigo-50 text-indigo-900">
+                            <tr>
+                                <th class="p-4 font-bold">التاريخ</th>
+                                <th class="p-4 font-bold">العميل</th>
+                                <th class="p-4 font-bold">تفاصيل الطلب</th>
+                                <th class="p-4 font-bold">المجموع</th>
+                                <th class="p-4 font-bold">الحالة</th>
+                                <th class="p-4 font-bold text-center">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orders-table-body" class="divide-y divide-gray-100">
+                            <!-- Orders Rendered Here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- MESSAGES VIEW -->
+            <div id="messages-view" class="hidden">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-right">
+                            <thead class="bg-gray-50 text-gray-600 text-sm font-semibold uppercase tracking-wider">
+                                <tr>
+                                    <th class="p-4">التاريخ</th>
+                                    <th class="p-4">النوع</th>
+                                    <th class="p-4">المرسل</th>
+                                    <th class="p-4">الرسالة</th>
+                                    <th class="p-4 text-center w-24">إجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="messages-table-body" class="divide-y divide-gray-100">
+                                <!-- Dynamic content -->
+                            </tbody>
+                        </table>
+                        <div id="no-messages" class="hidden p-10 text-center text-gray-500">
+                            لا توجد رسائل جديدة
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Product Modal (Refined Design) -->
+    <div id="product-modal"
+        class="fixed inset-0 bg-black bg-opacity-60 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
+        <div
+            class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl transform transition-all scale-100 overflow-hidden">
+            <!-- Header -->
+            <div class="bg-indigo-900 px-6 py-4 flex justify-between items-center">
+                <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                    <i class="fas fa-box-open"></i> <span id="modal-title">إضافة منتج جديد</span>
+                </h3>
+                <button onclick="closeProductModal()" class="text-indigo-200 hover:text-white transition"><i
+                        class="fas fa-times text-xl"></i></button>
+            </div>
+
+            <!-- Body -->
+            <form id="product-form" class="p-8 space-y-6">
+                <input type="hidden" id="product-id">
+
+                <!-- Row 1: Name & Category -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">اسم المنتج</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 right-3 flex items-center text-gray-400"><i
+                                    class="fas fa-tag"></i></span>
+                            <input type="text" id="product-name" required
+                                class="w-full pr-10 pl-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-gray-50 transition"
+                                placeholder="مثال: كاتان">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">الفئة</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 right-3 flex items-center text-gray-400"><i
+                                    class="fas fa-layer-group"></i></span>
+                            <select id="product-category"
+                                class="w-full pr-10 pl-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-gray-50 transition appearance-none">
+                                <!-- Dynamic Options -->
+                            </select>
+                            <div
+                                class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-4 text-gray-700">
+                                <i class="fas fa-chevron-down text-xs"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Row 2: Price (Sale & Discount) & Image -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <div class="flex gap-4">
+                            <div class="flex-1">
+                                <label class="block text-gray-700 text-sm font-bold mb-2">السعر الأصلي</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 right-3 flex items-center text-gray-400"><i
+                                            class="fas fa-dollar-sign"></i></span>
+                                    <input type="number" id="product-price" step="0.01" min="0" required
+                                        class="w-full pr-10 pl-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-gray-50 transition"
+                                        placeholder="مثال: 50.00">
+                                </div>
+                            </div>
+                            <div class="flex-1">
+                                <label class="block text-gray-700 text-sm font-bold mb-2">سعر الخصم <span
+                                        class="text-xs font-normal text-red-500">(اختياري)</span></label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 right-3 flex items-center text-gray-400"><i
+                                            class="fas fa-tag"></i></span>
+                                    <input type="number" id="product-discount-price" step="0.01" min="0"
+                                        class="w-full pr-10 pl-4 py-3 border border-red-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-red-50 transition"
+                                        placeholder="مثال: 35.00">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">صورة المنتج</label>
+                        <div class="relative">
+                            <input type="file" id="product-image-upload" accept="image/*"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                            <input type="hidden" id="product-image-base64">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Row 3: Description -->
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-2">وصف المنتج</label>
+                    <textarea id="product-desc" rows="3" required
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-gray-50 transition"
+                        placeholder="اكتب وصفاً مختصراً وجذاباً للمنتج..."></textarea>
+                </div>
+
+                <!-- Footer Buttons -->
+                <div class="pt-6 flex gap-4 border-t mt-4">
+                    <button type="submit"
+                        class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg transform transition active:scale-95 flex justify-center items-center gap-2">
+                        <i class="fas fa-save"></i> حفظ المنتج
+                    </button>
+                    <button type="button" onclick="closeProductModal()"
+                        class="flex-1 bg-white border border-gray-300 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-50 transition">
+                        إلغاء
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Category Management Modal -->
+    <div id="category-modal"
+        class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden">
+            <!-- Header -->
+            <div class="bg-green-600 px-6 py-4 flex justify-between items-center">
+                <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                    <i class="fas fa-layer-group"></i> إدارة الفئات
+                </h3>
+                <button onclick="closeCategoryModal()" class="text-green-100 hover:text-white transition">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="p-6">
+                <!-- Categories List -->
+                <div class="mb-6">
+                    <h4 class="font-bold text-gray-700 mb-3 text-sm">الفئات الحالية</h4>
+                    <div class="bg-gray-50 rounded-lg border border-gray-100 max-h-64 overflow-y-auto">
+                        <table class="w-full text-right">
+                            <thead class="bg-gray-100 sticky top-0">
+                                <tr class="text-gray-600 text-sm">
+                                    <th class="p-3 text-right">اسم الفئة</th>
+                                    <th class="p-3 text-center w-32">الإجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="category-table-body" class="divide-y divide-gray-100">
+                                <!-- Dynamic content -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Add New Category -->
+                <div class="border-t pt-6">
+                    <h4 class="font-bold text-gray-700 mb-3 text-sm">إضافة فئة جديدة</h4>
+                    <div class="flex gap-3">
+                        <input type="text" id="new-category-name" placeholder="اسم الفئة (مثال: ألعاب ورقية)"
+                            class="flex-1 px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition">
+                        <button onclick="addNewCategory()"
+                            class="bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-3 rounded-lg shadow-md transition flex items-center gap-2">
+                            <i class="fas fa-plus"></i> إضافة
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Category Modal -->
+    <div id="edit-category-modal"
+        class="fixed inset-0 bg-black bg-opacity-50 z-[60] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <i class="fas fa-edit text-blue-600"></i> تعديل الفئة
+            </h3>
+            <input type="hidden" id="edit-category-id">
+            <input type="text" id="edit-category-name" placeholder="اسم الفئة الجديد"
+                class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 mb-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <div class="flex gap-3">
+                <button onclick="closeEditCategoryModal()"
+                    class="flex-1 py-3 text-gray-600 font-bold hover:bg-gray-100 rounded-lg transition">إلغاء</button>
+                <button onclick="saveEditCategory()"
+                    class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-md transition">حفظ
+                    التعديل</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Currency Modal -->
+    <div id="currency-modal"
+        class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-gray-800">إدارة العملات</h3>
+                <button onclick="closeCurrencyModal()" class="text-gray-400 hover:text-red-500"><i
+                        class="fas fa-times"></i></button>
+            </div>
+
+            <!-- List -->
+            <div class="mb-6 bg-gray-50 rounded-lg p-4 border border-gray-100 max-h-48 overflow-y-auto">
+                <table class="w-full text-sm text-right">
+                    <thead>
+                        <tr class="text-gray-500 border-b">
+                            <th class="pb-2">الرمز</th>
+                            <th class="pb-2">الشعار</th>
+                            <th class="pb-2">سعر الصرف (مقابل USD)</th>
+                            <th class="pb-2"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="currency-table-body">
+                        <!-- Dynamic -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Add New -->
+            <h4 class="font-bold text-gray-700 mb-3 text-sm">إضافة عملة جديدة</h4>
+            <div class="grid grid-cols-3 gap-3 mb-4">
+                <input type="text" id="curr-code" placeholder="الرمز (SAR)"
+                    class="px-3 py-2 border rounded text-xs uppercase text-right" dir="ltr">
+                <input type="text" id="curr-symbol" placeholder="الشعار (ر.س)"
+                    class="px-3 py-2 border rounded text-xs text-right">
+                <input type="number" id="curr-rate" placeholder="السعر مقابل الدوار" step="0.01" min="0"
+                    class="px-3 py-2 border rounded text-xs text-right">
+            </div>
+            <button onclick="addNewCurrency()"
+                class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 rounded-lg shadow-sm">إضافة
+                العملة</button>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div id="change-password-modal"
+        class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
+            <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                <i class="fas fa-key text-indigo-600"></i> تغيير كلمة المرور
+            </h3>
+            <form onsubmit="handleChangePassword(event)" class="space-y-4">
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-2">كلمة المرور الحالية</label>
+                    <input type="password" id="current-password" required
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-gray-50">
+                </div>
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-2">كلمة المرور الجديدة</label>
+                    <input type="password" id="new-password" required
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-gray-50">
+                </div>
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-2">تأكيد كلمة المرور الجديدة</label>
+                    <input type="password" id="confirm-password" required
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-gray-50">
+                </div>
+                <div class="flex gap-3 pt-4">
+                    <button type="button"
+                        onclick="document.getElementById('change-password-modal').classList.add('hidden')"
+                        class="flex-1 py-3 text-gray-600 font-bold hover:bg-gray-100 rounded-lg transition">إلغاء</button>
+                    <button type="submit"
+                        class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg shadow-md transition">حفظ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        // --- Authentication System ---
+        const DEFAULT_PASS = 'ssdssd44';
+
+        function initAuth() {
+            // Ensure password exists in storage
+            if (!localStorage.getItem('adminPassword')) {
+                localStorage.setItem('adminPassword', DEFAULT_PASS);
+            }
+
+            // Check Session
+            if (sessionStorage.getItem('adminSession') === 'active') {
+                document.getElementById('login-overlay').classList.add('hidden');
+            } else {
+                document.getElementById('login-overlay').classList.remove('hidden');
+            }
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const input = document.getElementById('login-password');
+            const storedPass = localStorage.getItem('adminPassword');
+
+            if (input.value === storedPass) {
+                // Success
+                sessionStorage.setItem('adminSession', 'active');
+
+                // Animation
+                const overlay = document.getElementById('login-overlay');
+                overlay.style.opacity = '0';
+                setTimeout(() => {
+                    overlay.classList.add('hidden');
+                    overlay.style.opacity = '1'; // Reset for logout
+                    input.value = '';
+                }, 500);
+            } else {
+                showToast('كلمة المرور غير صحيحة', 'error');
+                input.classList.add('animate-pulse', 'border-red-500');
+                setTimeout(() => input.classList.remove('animate-pulse', 'border-red-500'), 500);
+            }
+        }
+
+        function logout() {
+            sessionStorage.removeItem('adminSession');
+            document.getElementById('login-overlay').classList.remove('hidden');
+            showToast('تم تسجيل الخروج', 'success');
+        }
+
+        function openChangePasswordModal() {
+            document.getElementById('change-password-modal').classList.remove('hidden');
+            document.getElementById('current-password').value = '';
+            document.getElementById('new-password').value = '';
+            document.getElementById('confirm-password').value = '';
+        }
+
+        function handleChangePassword(e) {
+            e.preventDefault();
+            const currentObj = document.getElementById('current-password');
+            const newObj = document.getElementById('new-password');
+            const confirmObj = document.getElementById('confirm-password');
+
+            const storedPass = localStorage.getItem('adminPassword');
+
+            if (currentObj.value !== storedPass) {
+                showToast('كلمة المرور الحالية غير صحيحة', 'error');
+                return;
+            }
+
+            if (newObj.value !== confirmObj.value) {
+                showToast('كلمة المرور الجديدة غير متطابقة', 'error');
+                return;
+            }
+
+            if (newObj.value.length < 4) {
+                showToast('كلمة المرور قصيرة جداً', 'error');
+                return;
+            }
+
+            localStorage.setItem('adminPassword', newObj.value);
+            showToast('تم تغيير كلمة المرور بنجاح', 'success');
+            document.getElementById('change-password-modal').classList.add('hidden');
+        }
+
+        // --- Setup ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initAuth(); // Run Auth Check
+            initAuth(); // Run Auth Check
+            renderTable();
+            updateOrderBadge();
+            setInterval(updateOrderBadge, 5000); // Check every 5 seconds
+
+            renderTickets(); // Init tickets
+            document.getElementById('mobile-menu-toggle').addEventListener('click', () => {
+                document.querySelector('aside').classList.toggle('hidden');
+            });
+
+            document.getElementById('product-image-upload').addEventListener('change', function (e) {
+                const file = e.target.files[0];
+                if (file) {
+                    if (file.size > 2000000) {
+                        showToast('حجم الملف كبير جداً (أقصى حد 2 ميجا)', 'error');
+                        this.value = '';
+                        return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        document.getElementById('product-image-base64').value = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        });
+
+        // --- View Switching ---
+        function showView(viewId) {
+            // Hide all
+            document.getElementById('products-view').classList.add('hidden');
+            document.getElementById('messages-view').classList.add('hidden');
+            document.getElementById('orders-view').classList.add('hidden');
+
+            // Reset Nav
+            ['nav-products', 'nav-messages', 'nav-orders'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.classList.remove('bg-indigo-800', 'text-white');
+                    el.classList.add('text-indigo-300');
+                }
+            });
+
+            // Show selected
+            document.getElementById(`${viewId}-view`).classList.remove('hidden');
+
+            // Active Nav
+            const navId = `nav-${viewId}`;
+            const activeNav = document.getElementById(navId);
+            if (activeNav) {
+                activeNav.classList.remove('text-indigo-300');
+                activeNav.classList.add('bg-indigo-800', 'text-white');
+            }
+
+            // Header Handling
+            const pageTitle = document.getElementById('page-title');
+            const headerActions = document.getElementById('header-actions');
+
+            if (viewId === 'products') {
+                pageTitle.innerText = 'إدارة المنتجات';
+                headerActions.classList.remove('hidden');
+            } else if (viewId === 'orders') {
+                pageTitle.innerText = 'الطلبات الواردة';
+                headerActions.classList.add('hidden');
+                renderOrders();
+            } else if (viewId === 'messages') {
+                pageTitle.innerText = 'الرسائل والبلاغات';
+                headerActions.classList.add('hidden');
+                renderTickets();
+            }
+        }
+
+        // --- Orders Logic ---
+        function renderOrders() {
+            const tbody = document.getElementById('orders-table-body');
+            const orders = JSON.parse(localStorage.getItem('boardGameOrders') || '[]');
+
+            if (orders.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-400">لا توجد طلبات واردة</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = orders.slice().reverse().map(order => {
+                const date = new Date(order.date).toLocaleDateString('ar-EG');
+                const isCompleted = order.status === 'completed';
+                const statusBadge = isCompleted
+                    ? `<span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold">مكتمل</span>`
+                    : `<span class="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-bold">جديد</span>`;
+
+                const itemsTooltip = order.items.map(i => `${i.quantity}x ${i.name}`).join('\n');
+
+                return `
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="p-4 text-sm text-gray-600">${date}</td>
+                    <td class="p-4">
+                        <div class="font-bold text-gray-800">${order.customer.name}</div>
+                        <div class="text-xs text-indigo-600">${order.customer.phone}</div>
+                        <div class="text-xs text-gray-500">${order.customer.governorate}</div>
+                    </td>
+                    <td class="p-4">
+                        <div class="text-sm text-gray-700" title="${itemsTooltip}">
+                            ${order.items.length} منتجات
+                        </div>
+                        <div class="text-xs text-gray-400 truncate max-w-[200px]">${order.items.map(i => i.name).join(', ')}</div>
+                    </td>
+                    <td class="p-4 font-bold text-indigo-900">${order.summary.total}</td>
+                    <td class="p-4">${statusBadge}</td>
+                    <td class="p-4 flex gap-2 justify-center">
+                        ${!isCompleted ? `
+                        <button onclick="toggleOrderStatus(${order.id})" class="bg-green-500 hover:bg-green-600 text-white p-2 rounded-lg shadow-md transition" title="تحديد كمكتمل">
+                            <i class="fas fa-check"></i>
+                        </button>` : ''}
+                        <button onclick="deleteOrder(${order.id})" class="bg-red-500 hover:bg-red-600 text-white p-2 rounded-lg shadow-md transition" title="حذف الطلب">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+                `;
+            }).join('');
+        }
+
+        function deleteOrder(id) {
+            if (!confirm('هل أنت متأكد من حذف هذا الطلب؟')) return;
+
+            let orders = JSON.parse(localStorage.getItem('boardGameOrders') || '[]');
+            orders = orders.filter(o => o.id !== id);
+            localStorage.setItem('boardGameOrders', JSON.stringify(orders));
+            renderOrders();
+            updateOrderBadge();
+            showToast('تم حذف الطلب', 'success');
+        }
+
+        function toggleOrderStatus(id) {
+            let orders = JSON.parse(localStorage.getItem('boardGameOrders') || '[]');
+            const order = orders.find(o => o.id === id);
+            if (order) {
+                order.status = 'completed';
+                localStorage.setItem('boardGameOrders', JSON.stringify(orders));
+                renderOrders();
+                showToast('تم تجهيز الطلب', 'success');
+                updateOrderBadge();
+            }
+        }
+
+        // --- Tickets Logic ---
+
+        function updateOrderBadge() {
+            const orders = JSON.parse(localStorage.getItem('boardGameOrders') || '[]');
+            const newCount = orders.filter(o => o.status === 'new').length;
+            const badge = document.getElementById('orders-badge');
+
+            if (newCount > 0) {
+                badge.innerText = newCount;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        // --- Tickets Logic ---
+        function renderTickets() {
+            const tickets = JSON.parse(localStorage.getItem('customer_tickets')) || [];
+            const tbody = document.getElementById('messages-table-body');
+            const noMsg = document.getElementById('no-messages');
+
+            if (tickets.length === 0) {
+                tbody.innerHTML = '';
+                noMsg.classList.remove('hidden');
+                return;
+            } else {
+                noMsg.classList.add('hidden');
+            }
+
+            // Sort newest first
+            tickets.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            const typeLabels = {
+                'technical': 'خطأ تقني',
+                'inquiry': 'استفسار عن طلب',
+                'suggestion': 'اقتراح',
+                'other': 'أخرى'
+            };
+
+            const typeColors = {
+                'technical': 'bg-red-100 text-red-700',
+                'inquiry': 'bg-blue-100 text-blue-700',
+                'suggestion': 'bg-green-100 text-green-700',
+                'other': 'bg-gray-100 text-gray-700'
+            };
+
+            tbody.innerHTML = tickets.map(ticket => `
+                <tr class="hover:bg-gray-50 transition border-b border-gray-50">
+                    <td class="p-4 text-xs text-gray-500">${new Date(ticket.date).toLocaleString('ar-EG')}</td>
+                    <td class="p-4"><span class="px-2 py-1 text-xs font-bold rounded ${typeColors[ticket.type] || 'bg-gray-100'}">${typeLabels[ticket.type] || ticket.type}</span></td>
+                    <td class="p-4 font-bold text-gray-800">${ticket.contact}</td>
+                    <td class="p-4 text-gray-600 max-w-md truncate" title="${ticket.message}">${ticket.message}</td>
+                    <td class="p-4 text-center">
+                        <button onclick="deleteTicket(${ticket.id})" class="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 w-8 h-8 rounded-full transition flex items-center justify-center">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function deleteTicket(id) {
+            if (confirm('هل أنت متأكد من حذف هذه الرسالة؟')) {
+                let tickets = JSON.parse(localStorage.getItem('customer_tickets')) || [];
+                tickets = tickets.filter(t => t.id !== id);
+                localStorage.setItem('customer_tickets', JSON.stringify(tickets));
+                renderTickets();
+                showToast('تم حذف الرسالة', 'success');
+            }
+        }
+
+
+        // --- Render ---
+        function renderTable() {
+            const products = ProductService.getAll();
+            const tbody = document.getElementById('products-table-body');
+            document.getElementById('total-count').innerText = products.length;
+            document.getElementById('featured-count').innerText = products.filter(p => p.isFeatured).length;
+
+            tbody.innerHTML = products.map(product => `
+                <tr class="hover:bg-gray-50 transition border-b border-gray-50">
+                    <td class="p-4"><img src="${product.image}" class="w-12 h-12 object-contain rounded bg-white border"></td>
+                    <td class="p-4 font-bold text-gray-800">${product.name}</td>
+                    <td class="p-4 font-bold">
+                        <span class="text-indigo-600">$${product.price}</span>
+                        ${product.discountPrice ? `<br><span class="text-xs text-red-500 line-through">$${product.discountPrice}</span>` : ''}
+                    </td>
+                    <td class="p-4"><span class="px-2 py-1 text-xs font-bold rounded bg-indigo-50 text-indigo-600">${getCategoryName(product.category)}</span></td>
+                    <td class="p-4 text-center">
+                        <input type="checkbox" ${product.isFeatured ? 'checked' : ''} onchange="toggleFeatured(${product.id})" class="form-checkbox h-5 w-5 text-indigo-600 rounded">
+                    </td>
+                    <td class="p-4 text-center">
+                        <div class="flex items-center justify-center gap-2">
+                            <button onclick="editProduct(${product.id})" class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center"><i class="fas fa-edit"></i></button>
+                            <button onclick="deleteProduct(${product.id})" class="w-8 h-8 rounded-full bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // --- Categories ---
+        function populateCategories(selectedId = null) {
+            const select = document.getElementById('product-category');
+            const categories = ProductService.getCategories();
+            select.innerHTML = categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            if (selectedId) select.value = selectedId;
+        }
+
+        function openCategoryManagementModal() {
+            document.getElementById('category-modal').classList.remove('hidden');
+            renderCategoriesTable();
+        }
+
+        function closeCategoryModal() {
+            document.getElementById('category-modal').classList.add('hidden');
+            document.getElementById('new-category-name').value = '';
+        }
+
+        function renderCategoriesTable() {
+            const categories = ProductService.getCategories();
+            const tbody = document.getElementById('category-table-body');
+
+            tbody.innerHTML = categories.map(cat => `
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="p-3 font-semibold text-gray-800">${cat.name}</td>
+                    <td class="p-3 text-center">
+                        <div class="flex items-center justify-center gap-2">
+                            <button onclick="openEditCategoryModal('${cat.id}', '${cat.name.replace(/'/g, "\\'")}')" 
+                                class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center transition"
+                                title="تعديل">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="deleteCategory('${cat.id}')" 
+                                class="w-8 h-8 rounded-full bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center transition"
+                                title="حذف">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function addNewCategory() {
+            const name = document.getElementById('new-category-name').value.trim();
+            if (name) {
+                ProductService.addCategory(name);
+                showToast('تمت إضافة الفئة بنجاح', 'success');
+                document.getElementById('new-category-name').value = '';
+                renderCategoriesTable();
+            } else {
+                showToast('الرجاء إدخال اسم الفئة', 'error');
+            }
+        }
+
+        function openEditCategoryModal(id, name) {
+            document.getElementById('edit-category-modal').classList.remove('hidden');
+            document.getElementById('edit-category-id').value = id;
+            document.getElementById('edit-category-name').value = name;
+        }
+
+        function closeEditCategoryModal() {
+            document.getElementById('edit-category-modal').classList.add('hidden');
+            document.getElementById('edit-category-id').value = '';
+            document.getElementById('edit-category-name').value = '';
+        }
+
+        function saveEditCategory() {
+            const id = document.getElementById('edit-category-id').value;
+            const newName = document.getElementById('edit-category-name').value.trim();
+
+            if (newName) {
+                const result = ProductService.updateCategory(id, newName);
+                if (result) {
+                    showToast('تم تعديل الفئة بنجاح', 'success');
+                    closeEditCategoryModal();
+                    renderCategoriesTable();
+                    renderTable(); // Refresh products table to show updated category names
+                } else {
+                    showToast('حدث خطأ أثناء التعديل', 'error');
+                }
+            } else {
+                showToast('الرجاء إدخال اسم الفئة', 'error');
+            }
+        }
+
+        function deleteCategory(id) {
+            if (confirm('هل أنت متأكد من حذف هذه الفئة؟')) {
+                const result = ProductService.deleteCategory(id);
+                if (result.success) {
+                    showToast('تم حذف الفئة بنجاح', 'success');
+                    renderCategoriesTable();
+                } else {
+                    showToast(result.message, 'error');
+                }
+            }
+        }
+
+        // --- Currency ---
+        function openCurrencyModal() {
+            document.getElementById('currency-modal').classList.remove('hidden');
+            renderCurrencies();
+        }
+        function closeCurrencyModal() { document.getElementById('currency-modal').classList.add('hidden'); }
+
+        function renderCurrencies() {
+            const currencies = ProductService.getCurrencies();
+            const tbody = document.getElementById('currency-table-body');
+            tbody.innerHTML = currencies.map(c => `
+                <tr>
+                    <td class="py-2 font-bold">${c.code}</td>
+                    <td class="py-2">${c.symbol}</td>
+                    <td class="py-2">${c.rate}</td>
+                    <td class="py-2 text-left">
+                        ${c.code !== 'USD' ? `<button onclick="removeCurrency('${c.code}')" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>` : '<span class="text-gray-400 text-xs italic">افتراضي</span>'}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function addNewCurrency() {
+            const code = document.getElementById('curr-code').value.trim().toUpperCase();
+            const symbol = document.getElementById('curr-symbol').value.trim();
+            const rate = parseFloat(document.getElementById('curr-rate').value);
+
+            if (code && symbol && !isNaN(rate) && rate > 0) {
+                const result = ProductService.addCurrency(code, 'Custom', symbol, rate);
+                if (result) {
+                    renderCurrencies();
+                    showToast('تمت إضافة العملة بنجاح', 'success');
+                    document.getElementById('curr-code').value = '';
+                    document.getElementById('curr-symbol').value = '';
+                    document.getElementById('curr-rate').value = '';
+                } else {
+                    showToast('العملة موجودة بالفعل', 'error');
+                }
+            } else {
+                showToast('الرجاء تعبئة جميع الحقول بشكل صحيح', 'error');
+            }
+        }
+
+        function removeCurrency(code) {
+            if (confirm('هل أنت متأكد من حذف هذه العملة؟')) {
+                ProductService.removeCurrency(code);
+                renderCurrencies();
+            }
+        }
+
+        // --- Products ---
+        function openProductModal(editMode = false, data = null) {
+            document.getElementById('product-modal').classList.remove('hidden');
+            populateCategories(data ? data.category : null);
+
+            if (editMode && data) {
+                document.getElementById('modal-title').innerText = 'تعديل المنتج';
+                document.getElementById('product-id').value = data.id;
+                document.getElementById('product-name').value = data.name;
+                document.getElementById('product-price').value = data.price;
+                document.getElementById('product-discount-price').value = data.discountPrice || '';
+                document.getElementById('product-desc').value = data.description;
+                document.getElementById('product-image-base64').value = data.image;
+            } else {
+                document.getElementById('modal-title').innerText = 'إضافة منتج جديد';
+                document.getElementById('product-form').reset();
+                document.getElementById('product-id').value = '';
+                document.getElementById('product-discount-price').value = ''; // Reset
+                document.getElementById('product-image-base64').value = 'image/1.png';
+            }
+        }
+        function closeProductModal() { document.getElementById('product-modal').classList.add('hidden'); }
+
+        window.editProduct = function (id) {
+            const product = ProductService.getById(id);
+            if (product) openProductModal(true, product);
+        }
+
+        window.deleteProduct = function (id) {
+            if (confirm('هل أنت متأكد من حذف المنتج؟')) {
+                ProductService.delete(id);
+                renderTable();
+                showToast('تم الحذف بنجاح', 'success');
+            }
+        }
+
+        window.toggleFeatured = function (id) {
+            ProductService.toggleFeatured(id);
+            renderTable();
+            showToast('تم التحديث', 'success');
+        }
+
+        document.getElementById('product-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = document.getElementById('product-id').value;
+            const name = document.getElementById('product-name').value.trim();
+            const price = parseFloat(document.getElementById('product-price').value);
+            const discountPriceInput = document.getElementById('product-discount-price').value;
+            const discountPrice = discountPriceInput ? parseFloat(discountPriceInput) : null;
+            const imageBase64 = document.getElementById('product-image-base64').value;
+
+            // Validation
+            if (!name) { showToast('الرجاء إدخال اسم المنتج', 'error'); return; }
+            if (isNaN(price) || price < 0) { showToast('الرجاء إدخال سعر صحيح', 'error'); return; }
+            if (discountPrice && (isNaN(discountPrice) || discountPrice < 0)) { showToast('الرجاء إدخال سعر خصم صحيح', 'error'); return; }
+
+            const data = {
+                name: name,
+                price: price,
+                discountPrice: discountPrice, // Save it
+                category: document.getElementById('product-category').value,
+                description: document.getElementById('product-desc').value,
+                image: imageBase64 || 'image/1.png',
+                isFeatured: false
+            };
+
+            if (id) {
+                const existing = ProductService.getById(id);
+                data.isFeatured = existing.isFeatured;
+                ProductService.update(id, data);
+            } else {
+                ProductService.add(data);
+            }
+            closeProductModal();
+            renderTable();
+            showToast('تم الحفظ بنجاح', 'success');
+        });
+    </script>
+</body>
+
+</html>
