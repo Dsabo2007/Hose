@@ -91,7 +91,7 @@ const ProductService = {
         if (stored) {
             try {
                 const parsed = JSON.parse(stored);
-                if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+                if (Array.isArray(parsed)) return parsed;
             } catch (e) {
                 console.error("Error parsing products from localStorage", e);
             }
@@ -151,7 +151,7 @@ const ProductService = {
         if (stored) {
             try {
                 const parsed = JSON.parse(stored);
-                if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+                if (Array.isArray(parsed)) return parsed;
             } catch (e) {
                 console.error("Error parsing categories from localStorage", e);
             }

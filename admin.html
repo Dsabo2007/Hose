@@ -604,9 +604,7 @@
             setInterval(updateOrderBadge, 5000); // Check every 5 seconds
 
             renderTickets(); // Init tickets
-            document.getElementById('mobile-menu-toggle').addEventListener('click', () => {
-                document.querySelector('aside').classList.toggle('hidden');
-            });
+            // Mobile menu listener handled in script.js
 
             document.getElementById('product-image-upload').addEventListener('change', function (e) {
                 const file = e.target.files[0];
