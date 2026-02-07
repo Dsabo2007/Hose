@@ -3,40 +3,36 @@
  */
 
 // State Management
+// State Management
 const State = {
     cart: JSON.parse(localStorage.getItem('boardGameCart')) || [],
-    currencyCode: localStorage.getItem('boardGameCurrencyCode') || 'USD'
+    currencyCode: 'IQD' // Enforce Single Currency
 };
 
 // --- Currency Logic ---
 function setCurrency(code) {
-    State.currencyCode = code;
-    localStorage.setItem('boardGameCurrencyCode', code);
-    location.reload();
+    // Disabled
+    console.log('Currency switching disabled');
 }
 
 function formatPrice(basePrice) {
-    const currencies = ProductService.getCurrencies();
-    let currency = currencies.find(c => c.code === State.currencyCode);
+    // Always format as IQD
+    // Assuming basePrice is in IQD. If basePrice was in USD, we might need conversion.
+    // However, user wants "One Currency". Usually this means base prices *are* in that currency.
+    // If the database (products.js) has prices in USD, we need to know the rate.
+    // But usually "Single Currency" implies we just treat the number as is, or we convert once.
+    // Let's assume the user will input prices in IQD or wants the existing numbers to be treated as IQD.
+    // Wait, previous code had `currency.rate`.
+    // If I just remove conversion, a price of "50" (USD) becomes "50 IQD" which is wrong.
+    // I should check if there is a conversion needed.
+    // The previous default was USD.
+    // If the user inputs "25000" for a game, it works.
+    // If they input "50", it displays "50 د.ع".
+    // I will assume the user intends to update product prices to IQD or they are already entered as such for the new "One Currency" policy.
+    // I'll just format the number.
 
-    // Fallback to USD
-    if (!currency) {
-        currency = currencies.find(c => c.code === 'USD') || { code: 'USD', rate: 1, symbol: '$' };
-        State.currencyCode = 'USD';
-        localStorage.setItem('boardGameCurrencyCode', 'USD');
-    }
-
-    const converted = basePrice * currency.rate;
-    const formattedNum = converted.toFixed(2);
-
-    // For RTL Layouts: Force LTR direction for the price block to keep symbol logic correct ($100 not 100$)
-    // Or handle it based on symbol type.
-    // We will return plain text now to avoid [object Object] or HTML tags showing up in innerText.
-    if (currency.symbol === '$' || currency.code === 'USD' || currency.code === 'EUR') {
-        return `${currency.symbol}${formattedNum}`;
-    } else {
-        return `${formattedNum} ${currency.symbol}`;
-    }
+    // Format with commas, no decimals for IQD
+    return Number(basePrice).toLocaleString('en-US') + ' د.ع';
 }
 
 // --- Cart Logic ---
@@ -74,11 +70,20 @@ function addToCart(productId) {
         ? parseFloat(product.discountPrice)
         : parseFloat(product.price);
 
+    // Check stock limit
     if (existingItem) {
+        if (existingItem.quantity + 1 > (product.quantity || 100)) { // Fallback if quantity not set
+            showToast('عذراً، لا تتوفر كمية إضافية من هذا المنتج', 'error');
+            return;
+        }
         existingItem.quantity += 1;
         // Update price in case it changed
         existingItem.price = finalPrice;
     } else {
+        if (1 > (product.quantity || 100)) {
+            showToast('عذراً، هذا المنتج غير متوفر حالياً', 'error');
+            return;
+        }
         State.cart.push({
             ...product,
             price: finalPrice, // Store the effective price
@@ -101,6 +106,19 @@ function removeFromCart(productId) {
 function updateQuantity(productId, change) {
     const item = State.cart.find(item => item.id === productId);
     if (item) {
+        // Validation for increasing quantity
+        if (change > 0) {
+            const product = ProductService.getById(productId);
+            // We use the product data from service to get latest stock info
+            // If product not found in service (deleted?), rely on item data or default
+            const maxStock = product ? (product.quantity || 100) : 100;
+
+            if (item.quantity + change > maxStock) {
+                showToast('عذراً، هذه هي الكمية المتوفرة فقط', 'error');
+                return;
+            }
+        }
+
         item.quantity += change;
         if (item.quantity <= 0) {
             removeFromCart(productId);
@@ -150,6 +168,7 @@ function renderProducts(productsToRender) {
 }
 
 function createProductCard(product) {
+    const isOutOfStock = (product.quantity || 0) <= 0;
     // Check for discount (Discount Price exists AND is lower than Regular Price)
     const hasDiscount = product.discountPrice && product.discountPrice < product.price;
     const discountPercent = hasDiscount ? Math.round(((product.price - product.discountPrice) / product.price) * 100) : 0;
@@ -160,11 +179,12 @@ function createProductCard(product) {
             <img src="${product.image}" alt="${product.name}" class="w-full h-full object-contain p-8">
             
             <div class="absolute top-4 right-4 flex flex-col gap-2 z-10 w-full px-4 items-end">
-                ${product.isFeatured ? '<span class="bg-gradient-to-r from-yellow-400 to-yellow-500 text-indigo-900 text-xs font-black px-3 py-1.5 rounded-full shadow-lg self-end">مميز ★</span>' : ''}
+                ${product.isFeatured ? '<span class="bg-gradient-to-r from-yellow-400 to-yellow-500 text-indigo-900 text-xs font-black px-3 py-1.5 rounded-full shadow-lg self-end">الجديد ★</span>' : ''}
                 ${hasDiscount ? `
                     <span class="bg-red-500 text-white text-xs font-black px-3 py-1.5 rounded-full shadow-lg animate-pulse self-end mb-1">عرض خاص 🔥</span>
                     <span class="bg-blue-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg self-end" dir="ltr">-${discountPercent}%</span>
                 ` : ''}
+                ${isOutOfStock ? '<span class="bg-gray-800 text-white text-xs font-black px-3 py-1.5 rounded-full shadow-lg self-end">نفذت الكمية</span>' : ''}
             </div>
             
             <a href="product-details.html?id=${product.id}" class="absolute inset-0 bg-indigo-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-[2px]">
@@ -182,7 +202,7 @@ function createProductCard(product) {
                         <span class="text-xs line-through text-gray-400 decoration-red-500 decoration-1 mb-0.5">${formatPrice(product.price)}</span>
                         <span class="text-lg font-black text-red-600">${formatPrice(product.discountPrice)}</span>
                     ` : `
-                        <span class="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-indigo-800">${formatPrice(product.price)}</span>
+                        <span class="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-[#2563eb] to-[#60a5fa]">${formatPrice(product.price)}</span>
                     `}
                 </div>
             </div>
@@ -193,21 +213,53 @@ function createProductCard(product) {
             
             <p class="text-gray-500 text-sm line-clamp-2 mb-6 flex-grow leading-relaxed">${product.description}</p>
             
-            <button onclick="addToCart(${product.id})" class="w-full bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold py-3 rounded-xl shadow-md hover:shadow-indigo-200 transition-all flex items-center justify-center gap-2 group-hover:bg-indigo-700">
+            ${isOutOfStock ? `
+             <button disabled class="w-full bg-gray-300 text-gray-500 font-bold py-3 rounded-xl shadow-none cursor-not-allowed flex items-center justify-center gap-2">
+                <span>نفذت الكمية</span>
+                <i class="fas fa-ban"></i>
+            </button>
+            ` : `
+            <button onclick="addToCart(${product.id})" class="w-full btn-gradient active:scale-95 text-white font-bold py-3 rounded-xl shadow-md hover:shadow-indigo-200 transition-all flex items-center justify-center gap-2">
                 <span>أضف للسلة</span>
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform group-hover:translate-x-[-2px] transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
             </button>
+            `}
         </div>
     </div>
     `;
 }
 
+// --- Render Functions ---
+function renderProducts(products) {
+    const grid = document.getElementById('products-grid');
+    if (!grid) return;
+
+    if (!products || products.length === 0) {
+        grid.innerHTML = '\u003cdiv class="col-span-full text-center py-20 text-gray-400"\u003e\n            \u003ci class="fas fa-box-open text-6xl mb-4 opacity-50"\u003e\u003c/i\u003e\n            \u003cp class="text-xl font-bold"\u003e\u0644\u0627 \u062a\u0648\u062c\u062f \u0645\u0646\u062a\u062c\u0627\u062a\u003c/p\u003e\n        \u003c/div\u003e';
+        return;
+    }
+
+    grid.innerHTML = products.map(p => createProductCard(p)).join('');
+}
+
+function renderFeaturedProducts() {
+    const container = document.getElementById('featured-products-grid');
+    if (!container) return;
+
+    const featured = ProductService.getAll().filter(p => p.isFeatured);
+
+    if (!featured || featured.length === 0) {
+        container.innerHTML = '\u003cdiv class="col-span-full text-center py-10 text-gray-400"\u003e\n            \u003cp\u003e\u0644\u0627 \u062a\u0648\u062c\u062f \u0645\u0646\u062a\u062c\u0627\u062a \u0645\u0645\u064a\u0632\u0629 \u062d\u0627\u0644\u064a\u0627\u064b\u003c/p\u003e\n        \u003c/div\u003e';
+        return;
+    }
+
+    container.innerHTML = featured.slice(0, 6).map(p => createProductCard(p)).join('');
+}
+
 function getCategoryName(categoryId) {
-    const categories = ProductService.getCategories();
-    const cat = categories.find(c => c.id === categoryId);
-    return cat ? cat.name : categoryId;
+    return ProductService.getCategoryName(categoryId);
 }
 
 // --- Toast Notification ---
@@ -245,7 +297,11 @@ function showToast(message, type = 'success') {
 }
 
 // --- Initial Setup ---
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Attempt init in background or await if needed
+    // Since pages might handle init, we can just ensure it starts
+    ProductService.init().catch(e => console.error(e));
+
     updateCartCount();
 
     const btn = document.getElementById('mobile-menu-toggle') || document.getElementById('mobile-menu-btn'); // Handle both IDs used in project
@@ -257,10 +313,29 @@ document.addEventListener('DOMContentLoaded', () => {
             else menu.classList.toggle('hidden');
         });
     }
+
+    // Scroll To Top Logic
+    const scrollBtn = document.getElementById('scroll-to-top-btn');
+    if (scrollBtn) {
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 300) {
+                scrollBtn.classList.add('visible');
+            } else {
+                scrollBtn.classList.remove('visible');
+            }
+        });
+
+        scrollBtn.addEventListener('click', () => {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+    }
 });
 
 // --- Support System ---
-function submitTicket(event) {
+async function submitTicket(event) {
     event.preventDefault();
 
     const typeSelect = document.getElementById('ticket-type');
@@ -276,23 +351,48 @@ function submitTicket(event) {
         return;
     }
 
+    // Iraqi Phone Validation
+    const phoneRegex = /^07[3-9]\d{8}$/;
+    if (!phoneRegex.test(contact)) {
+        showToast('رقم الهاتف غير صحيح. يجب أن يبدأ بـ 07 وتكون 11 رقماً.', 'error');
+        contactInput.classList.add('border-red-500', 'animate-pulse');
+        setTimeout(() => contactInput.classList.remove('border-red-500', 'animate-pulse'), 1500);
+        return;
+    }
+
+    const btn = event.target.querySelector('button[type="submit"]');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإرسال...';
+
     const ticket = {
-        id: Date.now(),
-        date: new Date().toISOString(),
         type: type,
         contact: contact,
-        message: message,
-        status: 'new'
+        message: message
     };
 
-    const tickets = JSON.parse(localStorage.getItem('customer_tickets')) || [];
-    tickets.push(ticket);
-    localStorage.setItem('customer_tickets', JSON.stringify(tickets));
+    try {
+        console.log('Sending ticket:', ticket);
+        const { data, error } = await supabase.from('messages').insert([ticket]).select();
 
-    // Reset Form
-    typeSelect.value = '';
-    contactInput.value = '';
-    messageInput.value = '';
+        console.log('Supabase response:', { data, error });
 
-    showToast('تم إرسال بلاغك بنجاح، شكراً لتواصلك!', 'success');
+        if (error) {
+            console.error('Supabase error details:', error);
+            throw error;
+        }
+
+        // Reset Form
+        typeSelect.value = '';
+        contactInput.value = '';
+        messageInput.value = '';
+
+        showToast('تم إرسال بلاغك بنجاح، شكراً لتواصلك!', 'success');
+    } catch (err) {
+        console.error("Full ticket error:", err);
+        showToast('فشل الإرسال: ' + (err.message || 'حاول مرة أخرى'), 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
 }

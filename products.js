@@ -1,229 +1,157 @@
-const initialProducts = [
-    {
-        id: 1,
-        name: "Catan",
-        price: 40,
-        category: "strategy",
-        image: "image/1.png",
-        description: "The Classic Strategy Game. Gather resources, build settlements, and control the island.",
-        isFeatured: true
-    },
-    {
-        id: 2,
-        name: "Ticket to Ride",
-        price: 48,
-        category: "family",
-        image: "image/2.png",
-        description: "Cross-country train adventure. Collect cards and connect cities.",
-        isFeatured: true
-    },
-    {
-        id: 3,
-        name: "Codenames",
-        price: 24,
-        category: "party",
-        image: "image/3.png",
-        description: "Social word game. Can you guess your team's words before the others?",
-        isFeatured: false
-    },
-    {
-        id: 4,
-        name: "Pandemic",
-        price: 43,
-        category: "strategy",
-        image: "image/4.png",
-        description: "Co-op game. Work together to save the world from disease outbreaks.",
-        isFeatured: false
-    },
-    {
-        id: 5,
-        name: "Splendor",
-        price: 38,
-        category: "strategy",
-        image: "image/5.png",
-        description: "Gem collecting chip game. Build your merchant empire.",
-        isFeatured: true
-    },
-    {
-        id: 6,
-        name: "Dixit",
-        price: 35,
-        category: "party",
-        image: "image/6.png",
-        description: "Imaginative guessing game with beautiful artwork.",
-        isFeatured: false
-    },
-    {
-        id: 7,
-        name: "Exploding Kittens",
-        price: 22,
-        category: "party",
-        image: "image/7.png",
-        description: "Fast-paced card game... beware of the exploding cats!",
-        isFeatured: true
-    },
-    {
-        id: 8,
-        name: "Azul",
-        price: 41,
-        category: "family",
-        image: "image/8.png",
-        description: "Beautiful tile-laying game. Decorate the royal palace.",
-        isFeatured: false
-    }
-];
 
-const initialCategories = [
-    { id: 'strategy', name: 'Strategy' },
-    { id: 'family', name: 'Family' },
-    { id: 'party', name: 'Party' }
-];
-
-const initialCurrencies = [
-    { code: 'USD', name: 'US Dollar', symbol: '$', rate: 1 } // Base currency
-];
-
-// Data Service
+// Data Service with Supabase
 const ProductService = {
-    // Products
-    getAll: function () {
-        const stored = localStorage.getItem('boardGameProducts');
-        if (stored) {
-            try {
-                const parsed = JSON.parse(stored);
-                if (Array.isArray(parsed)) return parsed;
-            } catch (e) {
-                console.error("Error parsing products from localStorage", e);
-            }
+    products: [],
+    categories: [],
+    orders: [],
+
+    initialized: false,
+
+    // Initialize: Fetch data from Supabase
+    init: async function () {
+        if (this.initialized) return;
+        console.log('Initializing ProductService...');
+        try {
+            // Fetch Categories
+            const { data: cats, error: catError } = await supabase.from('categories').select('*');
+            if (catError) throw catError;
+            this.categories = cats || [];
+
+            // Fetch Products
+            const { data: prods, error: prodError } = await supabase.from('products').select('*');
+            if (prodError) throw prodError;
+            this.products = prods || [];
+
+            // Fetch Orders (for admin) is separate usually, but we can init if needed.
+            // For now, products and categories are critical for global usage.
+
+            console.log('ProductService initialized with', this.products.length, 'products');
+            this.initialized = true;
+        } catch (err) {
+            console.error('Error initializing ProductService:', err);
+            // Fallback to localStorage or empty if offline/error? 
+            // For now, let's just log it.
         }
-        localStorage.setItem('boardGameProducts', JSON.stringify(initialProducts));
-        return initialProducts;
     },
 
-    saveAll: function (products) {
-        localStorage.setItem('boardGameProducts', JSON.stringify(products));
+    // Products - Read (Sync from local state)
+    getAll: function () {
+        return this.products;
     },
 
     getById: function (id) {
-        const products = this.getAll();
-        return products.find(p => p.id === parseInt(id));
+        return this.products.find(p => p.id === parseInt(id));
     },
 
-    add: function (product) {
-        const products = this.getAll();
-        const newId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
-        const newProduct = { ...product, id: newId };
-        products.push(newProduct);
-        this.saveAll(products);
+    // Products - Write (Async to Supabase + Local Update)
+    add: async function (product) {
+        // Remove ID if present to let Supabase verify auto-increment, or generate ID if not auto-increment.
+        // Assuming Supabase 'products' table has 'id' as serial/identity.
+        const { id, ...prodData } = product;
+
+        const { data, error } = await supabase.from('products').insert([prodData]).select();
+        if (error) {
+            console.error('Error adding product:', error);
+            throw error;
+        }
+        const newProduct = data[0];
+        this.products.push(newProduct);
         return newProduct;
     },
 
-    update: function (id, data) {
-        const products = this.getAll();
-        const index = products.findIndex(p => p.id === parseInt(id));
-        if (index !== -1) {
-            products[index] = { ...products[index], ...data };
-            this.saveAll(products);
-            return products[index];
+    update: async function (id, updates) {
+        const { data, error } = await supabase
+            .from('products')
+            .update(updates)
+            .eq('id', parseInt(id))
+            .select();
+
+        if (error) {
+            console.error('Error updating product:', error);
+            throw error;
         }
-        return null;
+
+        const updated = data[0];
+        const index = this.products.findIndex(p => p.id === parseInt(id));
+        if (index !== -1) {
+            this.products[index] = updated;
+        }
+        return updated;
     },
 
-    delete: function (id) {
-        let products = this.getAll();
-        products = products.filter(p => p.id !== parseInt(id));
-        this.saveAll(products);
+    delete: async function (id) {
+        const { error } = await supabase.from('products').delete().eq('id', parseInt(id));
+        if (error) {
+            console.error('Error deleting product:', error);
+            throw error;
+        }
+        this.products = this.products.filter(p => p.id !== parseInt(id));
     },
 
-    toggleFeatured: function (id) {
-        const products = this.getAll();
-        const product = products.find(p => p.id === parseInt(id));
+    toggleFeatured: async function (id) {
+        const product = this.getById(id);
         if (product) {
-            product.isFeatured = !product.isFeatured;
-            this.saveAll(products);
-            return product.isFeatured;
+            return await this.update(id, { isFeatured: !product.isFeatured });
         }
     },
 
     // Categories
     getCategories: function () {
-        const stored = localStorage.getItem('boardGameCategories');
-        if (stored) {
-            try {
-                const parsed = JSON.parse(stored);
-                if (Array.isArray(parsed)) return parsed;
-            } catch (e) {
-                console.error("Error parsing categories from localStorage", e);
-            }
-        }
-
-        localStorage.setItem('boardGameCategories', JSON.stringify(initialCategories));
-        return initialCategories;
+        return this.categories;
     },
 
-    addCategory: function (name) {
-        const categories = this.getCategories();
-        const id = 'cat_' + Date.now();
-        categories.push({ id, name });
-        localStorage.setItem('boardGameCategories', JSON.stringify(categories));
-        return { id, name };
+    getCategoryName: function (id) {
+        const cat = this.categories.find(c => c.id === parseInt(id));
+        return cat ? cat.name : 'غير محدد';
     },
 
-    updateCategory: function (id, newName) {
-        const categories = this.getCategories();
-        const category = categories.find(c => c.id === id);
-        if (category) {
-            category.name = newName;
-            localStorage.setItem('boardGameCategories', JSON.stringify(categories));
-            return category;
-        }
-        return null;
+    addCategory: async function (name) {
+        // Let Supabase auto-generate the ID
+        const { data, error } = await supabase.from('categories').insert([{ name }]).select();
+
+        if (error) throw error;
+
+        this.categories.push(data[0]);
+        return data[0];
     },
 
-    deleteCategory: function (id) {
-        let categories = this.getCategories();
-        // Check if any products use this category
-        const products = this.getAll();
-        const hasProducts = products.some(p => p.category === id);
+    updateCategory: async function (id, newName) {
+        const { data, error } = await supabase
+            .from('categories')
+            .update({ name: newName })
+            .eq('id', id)
+            .select();
 
+        if (error) throw error;
+
+        const index = this.categories.findIndex(c => c.id === id);
+        if (index !== -1) this.categories[index] = data[0];
+        return data[0];
+    },
+
+    deleteCategory: async function (id) {
+        // Check dependency - compare as integers
+        const hasProducts = this.products.some(p => p.category === parseInt(id));
         if (hasProducts) {
             return { success: false, message: 'لا يمكن حذف فئة تحتوي على منتجات' };
         }
 
-        categories = categories.filter(c => c.id !== id);
-        localStorage.setItem('boardGameCategories', JSON.stringify(categories));
+        const { error } = await supabase.from('categories').delete().eq('id', id);
+        if (error) throw error;
+
+        this.categories = this.categories.filter(c => c.id !== parseInt(id));
         return { success: true };
     },
 
-    // Currency
+    // Currency (Keep Local or Hardcode USD/IQD logic as it was simplified)
     getCurrencies: function () {
-        const stored = localStorage.getItem('boardGameCurrencies');
-        if (stored) return JSON.parse(stored);
-
-        localStorage.setItem('boardGameCurrencies', JSON.stringify(initialCurrencies));
-        return initialCurrencies;
-    },
-
-    addCurrency: function (code, name, symbol, rate) {
-        const currencies = this.getCurrencies();
-        // Prevent dupes
-        if (currencies.find(c => c.code === code)) return null;
-
-        const newCurrency = { code, name, symbol, rate: parseFloat(rate) };
-        currencies.push(newCurrency);
-        localStorage.setItem('boardGameCurrencies', JSON.stringify(currencies));
-        return newCurrency;
-    },
-
-    removeCurrency: function (code) {
-        if (code === 'USD') return; // Cannot remove base
-        let currencies = this.getCurrencies();
-        currencies = currencies.filter(c => c.code !== code);
-        localStorage.setItem('boardGameCurrencies', JSON.stringify(currencies));
+        // Enforce IQD as requested previously
+        return [{ code: 'USD', name: 'US Dollar', symbol: '$', rate: 1 }];
     }
 };
 
-// Global shorthand
-let products = ProductService.getAll();
+// Global shorthand (Proxies to service)
+// NOTE: These might be empty until init() completes!
+// We will need to ensure init() is called.
 function getProductById(id) { return ProductService.getById(id); }
 function getFeaturedProducts() { return ProductService.getAll().filter(p => p.isFeatured); }
