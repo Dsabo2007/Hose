@@ -9,8 +9,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="style.css">
     <!-- Supabase SDK -->
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script src="supabase.js"></script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
     <script src="products.js"></script>
 </head>
 
@@ -367,15 +369,14 @@
                         status: 'new'
                     };
 
-                    // Insert into Supabase
-                    const { data, error } = await supabase.from('orders').insert([orderData]).select();
-
-                    if (error) throw error;
+                    // Insert into Firebase
+                    // Add server timestamp
+                    orderData.date = firebase.firestore.FieldValue.serverTimestamp();
+                    
+                    const docRef = await db.collection('orders').add(orderData);
 
                     // Success handling
-                    // LocalStorage for success page display (optional, can pass ID or just keep generic)
-                    // We'll keep using localStorage for success.html display essentially
-                    const orderForDisplay = { ...orderData, id: data[0].id, customer: customerData };
+                    const orderForDisplay = { ...orderData, id: docRef.id, customer: customerData };
                     localStorage.setItem('lastOrderDetails', JSON.stringify(orderForDisplay));
 
                     // Clear Cart

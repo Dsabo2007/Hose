@@ -9,8 +9,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="style.css">
     <!-- Supabase SDK -->
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script src="supabase.js"></script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
     <script src="products.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -671,8 +673,8 @@
             const tbody = document.getElementById('orders-table-body');
 
             try {
-                const { data: orders, error } = await supabase.from('orders').select('*').order('date', { ascending: false });
-                if (error) throw error;
+                const snapshot = await db.collection('orders').orderBy('date', 'desc').get();
+                const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
                 if (!orders || orders.length === 0) {
                     tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-400">لا توجد طلبات واردة</td></tr>`;
@@ -683,7 +685,8 @@
                 updateOrderBadge(orders.filter(o => o.status === 'new').length);
 
                 tbody.innerHTML = orders.map(order => {
-                    const date = new Date(order.date).toLocaleDateString('ar-EG');
+                    const dateObj = order.date && order.date.toDate ? order.date.toDate() : new Date(order.date);
+                    const date = dateObj.toLocaleDateString('ar-EG');
                     const isCompleted = order.status === 'completed';
                     const statusBadge = isCompleted
                         ? `<span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold">مكتمل</span>`
@@ -741,8 +744,7 @@
             if (!confirm('هل أنت متأكد من حذف هذا الطلب؟')) return;
 
             try {
-                const { error } = await supabase.from('orders').delete().eq('id', id);
-                if (error) throw error;
+                await db.collection('orders').doc(id).delete();
 
                 showToast('تم حذف الطلب', 'success');
                 renderOrders();
@@ -757,8 +759,7 @@
 
             try {
                 // Update status in DB
-                const { error } = await supabase.from('orders').update({ status: 'completed' }).eq('id', id);
-                if (error) throw error;
+                await db.collection('orders').doc(id).update({ status: 'completed' });
 
                 // Inventory Deduction logic (Opt: Move this to backend or keep here)
                 // For now, keep here. Fetch order items to dedupe
@@ -768,7 +769,8 @@
                 // Assuming deduction happens here:
 
                 // Fetch order items
-                const { data: order } = await supabase.from('orders').select('items').eq('id', id).single();
+                const doc = await db.collection('orders').doc(id).get();
+                const order = doc.data();
                 if (order && order.items) {
                     let items = order.items;
                     if (typeof items === 'string') {
@@ -779,10 +781,11 @@
                     // This is risky in client side loop but ok for simple app
                     for (const item of items) {
                         // Fetch current stock
-                        const { data: prod } = await supabase.from('products').select('quantity').eq('id', item.id).single();
+                        const pDoc = await db.collection('products').doc(String(item.id)).get();
+                        const prod = pDoc.data();
                         if (prod) {
-                            const newQty = Math.max(0, prod.quantity - item.quantity);
-                            await supabase.from('products').update({ quantity: newQty }).eq('id', item.id);
+                            const newQty = Math.max(0, (prod.quantity || 0) - item.quantity);
+                            await db.collection('products').doc(String(item.id)).update({ quantity: newQty });
                         }
                     }
                     // Refresh products table if visible
@@ -818,8 +821,8 @@
             const noMsg = document.getElementById('no-messages');
 
             try {
-                const { data: tickets, error } = await supabase.from('messages').select('*').order('date', { ascending: false });
-                if (error) throw error;
+                const snapshot = await db.collection('messages').orderBy('date', 'desc').get();
+                const tickets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
                 if (!tickets || tickets.length === 0) {
                     tbody.innerHTML = '';
@@ -843,9 +846,11 @@
                     'other': 'bg-gray-100 text-gray-700'
                 };
 
-                tbody.innerHTML = tickets.map(ticket => `
+                tbody.innerHTML = tickets.map(ticket => {
+                    const dateObj = ticket.date && ticket.date.toDate ? ticket.date.toDate() : new Date(ticket.date);
+                    return `
                     <tr class="hover:bg-gray-50 transition border-b border-gray-50">
-                        <td class="p-4 text-xs text-gray-500">${new Date(ticket.date).toLocaleString('ar-EG')}</td>
+                        <td class="p-4 text-xs text-gray-500">${dateObj.toLocaleString('ar-EG')}</td>
                         <td class="p-4"><span class="px-2 py-1 text-xs font-bold rounded ${typeColors[ticket.type] || 'bg-gray-100'}">${typeLabels[ticket.type] || ticket.type}</span></td>
                         <td class="p-4 font-bold text-gray-800">${ticket.contact || ticket.email}</td>
                         <td class="p-4 text-gray-600 max-w-md truncate" title="${ticket.message}">${ticket.message}</td>
@@ -864,8 +869,7 @@
         async function deleteTicket(id) {
             if (confirm('هل أنت متأكد من حذف هذه الرسالة؟')) {
                 try {
-                    const { error } = await supabase.from('messages').delete().eq('id', id);
-                    if (error) throw error;
+                    await db.collection('messages').doc(id).delete();
                     renderTickets();
                     showToast('تم حذف الرسالة', 'success');
                 } catch (e) {
@@ -903,12 +907,12 @@
                     </td>
                     <td class="p-4"><span class="px-2 py-1 text-xs font-bold rounded bg-indigo-50 text-indigo-600">${getCategoryName(product.category)}</span></td>
                     <td class="p-4 text-center">
-                        <input type="checkbox" ${product.isFeatured ? 'checked' : ''} onchange="toggleFeatured(${product.id})" class="form-checkbox h-5 w-5 text-indigo-600 rounded">
+                        <input type="checkbox" ${product.isFeatured ? 'checked' : ''} onchange="toggleFeatured('${product.id}')" class="form-checkbox h-5 w-5 text-indigo-600 rounded">
                     </td>
                     <td class="p-4 text-center">
                         <div class="flex items-center justify-center gap-2">
-                            <button onclick="editProduct(${product.id})" class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center"><i class="fas fa-edit"></i></button>
-                            <button onclick="deleteProduct(${product.id})" class="w-8 h-8 rounded-full bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center"><i class="fas fa-trash"></i></button>
+                            <button onclick="editProduct('${product.id}')" class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center"><i class="fas fa-edit"></i></button>
+                            <button onclick="deleteProduct('${product.id}')" class="w-8 h-8 rounded-full bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center"><i class="fas fa-trash"></i></button>
                         </div>
                     </td>
                 </tr>

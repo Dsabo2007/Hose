@@ -72,7 +72,7 @@ function addToCart(productId) {
 
     // Check stock limit
     if (existingItem) {
-        if (existingItem.quantity + 1 > (product.quantity || 100)) { // Fallback if quantity not set
+        if (existingItem.quantity + 1 > (product.quantity != null ? product.quantity : 100)) { // Fallback if quantity not set
             showToast('عذراً، لا تتوفر كمية إضافية من هذا المنتج', 'error');
             return;
         }
@@ -80,7 +80,7 @@ function addToCart(productId) {
         // Update price in case it changed
         existingItem.price = finalPrice;
     } else {
-        if (1 > (product.quantity || 100)) {
+        if (1 > (product.quantity != null ? product.quantity : 100)) {
             showToast('عذراً، هذا المنتج غير متوفر حالياً', 'error');
             return;
         }
@@ -111,7 +111,7 @@ function updateQuantity(productId, change) {
             const product = ProductService.getById(productId);
             // We use the product data from service to get latest stock info
             // If product not found in service (deleted?), rely on item data or default
-            const maxStock = product ? (product.quantity || 100) : 100;
+            const maxStock = product ? (product.quantity != null ? product.quantity : 100) : 100;
 
             if (item.quantity + change > maxStock) {
                 showToast('عذراً، هذه هي الكمية المتوفرة فقط', 'error');
@@ -373,14 +373,11 @@ async function submitTicket(event) {
 
     try {
         console.log('Sending ticket:', ticket);
-        const { data, error } = await supabase.from('messages').insert([ticket]).select();
-
-        console.log('Supabase response:', { data, error });
-
-        if (error) {
-            console.error('Supabase error details:', error);
-            throw error;
-        }
+        
+        // Add a server timestamp for better ordering
+        ticket.date = firebase.firestore.FieldValue.serverTimestamp();
+        
+        await db.collection('messages').add(ticket);
 
         // Reset Form
         typeSelect.value = '';
