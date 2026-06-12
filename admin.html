@@ -204,7 +204,9 @@
                                     <th class="p-4 text-center">إجراءات</th>
                                 </tr>
                             </thead>
-                            <tbody id="products-table-body" class="divide-y divide-gray-100"></tbody>
+                            <tbody id="products-table-body" class="divide-y divide-gray-100">
+                                <tr id="products-loading"><td colspan="7" class="p-8 text-center text-gray-400"><i class="fas fa-spinner fa-spin"></i> جاري تحميل المنتجات...</td></tr>
+                            </tbody>
                         </table>
                     </div>
                 </div>
@@ -229,7 +231,7 @@
                             </tr>
                         </thead>
                         <tbody id="orders-table-body" class="divide-y divide-gray-100">
-                            <!-- Orders Rendered Here -->
+                            <tr id="orders-loading"><td colspan="6" class="p-8 text-center text-gray-400"><i class="fas fa-spinner fa-spin"></i> جاري تحميل الطلبات...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -497,16 +499,28 @@
     <script src="script.js"></script>
     <script>
         // --- Authentication System ---
-        const DEFAULT_PASS = 'ssdssd44';
+        function hashPassword(pw) {
+            let hash = 0;
+            for (let i = 0; i < pw.length; i++) {
+                const chr = pw.charCodeAt(i);
+                hash = ((hash << 5) - hash) + chr;
+                hash |= 0;
+            }
+            return 'h' + Math.abs(hash).toString(16);
+        }
+
+        function generateSessionToken() {
+            return 's_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 10);
+        }
 
         function initAuth() {
-            // Ensure password exists in storage
             if (!localStorage.getItem('adminPassword')) {
-                localStorage.setItem('adminPassword', DEFAULT_PASS);
+                const defaultPw = 'ssdssd44';
+                localStorage.setItem('adminPassword', hashPassword(defaultPw));
             }
 
-            // Check Session
-            if (sessionStorage.getItem('adminSession') === 'active') {
+            const token = sessionStorage.getItem('adminSession');
+            if (token && token.startsWith('s_')) {
                 document.getElementById('login-overlay').classList.add('hidden');
             } else {
                 document.getElementById('login-overlay').classList.remove('hidden');
@@ -516,18 +530,16 @@
         function handleLogin(e) {
             e.preventDefault();
             const input = document.getElementById('login-password');
-            const storedPass = localStorage.getItem('adminPassword');
+            const storedHash = localStorage.getItem('adminPassword');
 
-            if (input.value === storedPass) {
-                // Success
-                sessionStorage.setItem('adminSession', 'active');
+            if (hashPassword(input.value) === storedHash) {
+                sessionStorage.setItem('adminSession', generateSessionToken());
 
-                // Animation
                 const overlay = document.getElementById('login-overlay');
                 overlay.style.opacity = '0';
                 setTimeout(() => {
                     overlay.classList.add('hidden');
-                    overlay.style.opacity = '1'; // Reset for logout
+                    overlay.style.opacity = '1';
                     input.value = '';
                 }, 500);
             } else {
@@ -556,9 +568,9 @@
             const newObj = document.getElementById('new-password');
             const confirmObj = document.getElementById('confirm-password');
 
-            const storedPass = localStorage.getItem('adminPassword');
+            const storedHash = localStorage.getItem('adminPassword');
 
-            if (currentObj.value !== storedPass) {
+            if (hashPassword(currentObj.value) !== storedHash) {
                 showToast('كلمة المرور الحالية غير صحيحة', 'error');
                 return;
             }
@@ -573,7 +585,7 @@
                 return;
             }
 
-            localStorage.setItem('adminPassword', newObj.value);
+            localStorage.setItem('adminPassword', hashPassword(newObj.value));
             showToast('تم تغيير كلمة المرور بنجاح', 'success');
             document.getElementById('change-password-modal').classList.add('hidden');
         }
@@ -602,24 +614,59 @@
 
             document.getElementById('product-image-upload').addEventListener('change', function (e) {
                 const file = e.target.files[0];
-                if (file) {
-                    if (file.size > 2000000) {
-                        showToast('حجم الملف كبير جداً (أقصى حد 2 ميجا)', 'error');
-                        this.value = '';
-                        return;
-                    }
-                    const reader = new FileReader();
-                    reader.onload = function (e) {
-                        document.getElementById('product-image-base64').value = e.target.result;
-                        // Update preview
+                if (!file) return;
+
+                const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+                if (!allowedTypes.includes(file.type)) {
+                    showToast('نوع الملف غير مدعوم. يرجى رفع صور JPG, PNG, WebP أو GIF فقط', 'error');
+                    this.value = '';
+                    return;
+                }
+                if (file.size > 2097152) {
+                    showToast('حجم الملف كبير جداً (أقصى حد 2 ميجا قبل الضغط)', 'error');
+                    this.value = '';
+                    return;
+                }
+
+                const btn = document.querySelector('#product-form button[type="submit"]');
+                const originalText = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري ضغط الصورة...';
+
+                const reader = new FileReader();
+                reader.onload = function (ev) {
+                    const img = new Image();
+                    img.onload = function () {
+                        const canvas = document.createElement('canvas');
+                        const MAX = 800;
+                        let w = img.width, h = img.height;
+                        if (w > MAX || h > MAX) {
+                            if (w > h) { h = h * MAX / w; w = MAX; }
+                            else { w = w * MAX / h; h = MAX; }
+                        }
+                        canvas.width = w;
+                        canvas.height = h;
+                        const ctx = canvas.getContext('2d');
+                        ctx.imageSmoothingEnabled = true;
+                        ctx.imageSmoothingQuality = 'high';
+                        ctx.drawImage(img, 0, 0, w, h);
+
+                        const quality = file.type === 'image/gif' ? 1 : 0.7;
+                        const compressed = canvas.toDataURL(file.type === 'image/png' ? 'image/jpeg' : file.type, quality);
+
+                        document.getElementById('product-image-base64').value = compressed;
                         const preview = document.getElementById('image-preview');
                         if (preview) {
-                            preview.src = e.target.result;
+                            preview.src = compressed;
                             preview.classList.remove('hidden');
                         }
+                        btn.disabled = false;
+                        btn.innerHTML = originalText;
+                        showToast('تم ضغط الصورة بنجاح', 'success');
                     };
-                    reader.readAsDataURL(file);
-                }
+                    img.src = ev.target.result;
+                };
+                reader.readAsDataURL(file);
             });
         });
 
@@ -673,6 +720,7 @@
             const tbody = document.getElementById('orders-table-body');
 
             try {
+                document.getElementById('orders-loading')?.remove();
                 const snapshot = await db.collection('orders').orderBy('date', 'desc').get();
                 const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
@@ -702,7 +750,7 @@
                         const itemTotal = i.price * i.quantity;
                         return `
                         <div class="flex justify-between text-xs mb-1 border-b border-gray-50 pb-1 last:border-0">
-                            <span>${i.name} <span class="text-gray-400">x${i.quantity}</span></span>
+                            <span>${escapeHtml(i.name)} <span class="text-gray-400">x${i.quantity}</span></span>
                             <span class="font-bold text-gray-700">${formatPrice(itemTotal)}</span>
                         </div>
                     `}).join('') : '';
@@ -711,16 +759,16 @@
                     <tr class="hover:bg-gray-50 transition">
                         <td class="p-4 text-sm text-gray-600">${date}</td>
                         <td class="p-4">
-                            <div class="font-bold text-gray-800">${order.customer_name || order.customer?.name}</div>
-                            <div class="text-xs text-indigo-600">${order.customer_phone || order.customer?.phone}</div>
-                            <div class="text-xs text-gray-500">${order.customer_governorate || order.customer?.governorate}</div>
+                            <div class="font-bold text-gray-800">${escapeHtml(order.customer_name || order.customer?.name || '')}</div>
+                            <div class="text-xs text-indigo-600">${escapeHtml(order.customer_phone || order.customer?.phone || '')}</div>
+                            <div class="text-xs text-gray-500">${escapeHtml(order.customer_governorate || order.customer?.governorate || '')}</div>
                         </td>
                         <td class="p-4">
                             <div class="text-sm text-gray-700 max-h-20 overflow-y-auto pr-1 custom-scrollbar">
                                 ${itemsList}
                             </div>
                         </td>
-                        <td class="p-4 font-bold text-gradient-blue">${order.total || order.summary?.total}</td>
+                        <td class="p-4 font-bold text-gradient-blue">${formatPrice(order.total || order.summary?.total || 0)}</td>
                         <td class="p-4">${statusBadge}</td>
                         <td class="p-4 flex gap-2 justify-center">
                             ${!isCompleted ? `
@@ -756,46 +804,43 @@
 
         async function toggleOrderStatus(id, currentStatus) {
             if (currentStatus === 'completed') return;
+            if (!confirm('هل أنت متأكد من تجهيز هذا الطلب؟ سيتم خصم الكمية من المخزون.')) return;
 
             try {
-                // Update status in DB
-                await db.collection('orders').doc(id).update({ status: 'completed' });
-
-                // Inventory Deduction logic (Opt: Move this to backend or keep here)
-                // For now, keep here. Fetch order items to dedupe
-                // We need to fetch order again or pass items.
-                // Simplified: Just update status.
-                // If we want to deduct stock, we should have done it at checkout or now.
-                // Assuming deduction happens here:
-
-                // Fetch order items
                 const doc = await db.collection('orders').doc(id).get();
                 const order = doc.data();
+
+                const batch = db.batch();
+
+                batch.update(db.collection('orders').doc(id), { status: 'completed' });
+
                 if (order && order.items) {
                     let items = order.items;
                     if (typeof items === 'string') {
                         try { items = JSON.parse(items); } catch (e) { items = []; }
                     }
 
-                    // Update products
-                    // This is risky in client side loop but ok for simple app
-                    for (const item of items) {
-                        // Fetch current stock
-                        const pDoc = await db.collection('products').doc(String(item.id)).get();
-                        const prod = pDoc.data();
-                        if (prod) {
-                            const newQty = Math.max(0, (prod.quantity || 0) - item.quantity);
-                            await db.collection('products').doc(String(item.id)).update({ quantity: newQty });
+                    if (Array.isArray(items)) {
+                        for (const item of items) {
+                            const pRef = db.collection('products').doc(String(item.id));
+                            const pDoc = await pRef.get();
+                            const prod = pDoc.data();
+                            if (prod) {
+                                const newQty = Math.max(0, (prod.quantity || 0) - item.quantity);
+                                batch.update(pRef, { quantity: newQty });
+                            }
                         }
-                    }
-                    // Refresh products table if visible
-                    if (!document.getElementById('products-view').classList.contains('hidden')) {
-                        await ProductService.init(); // Re-fetch
-                        renderTable();
                     }
                 }
 
-                showToast('تم تجهيز الطلب', 'success');
+                await batch.commit();
+
+                if (!document.getElementById('products-view').classList.contains('hidden')) {
+                    await ProductService.refresh();
+                    renderTable();
+                }
+
+                showToast('تم تجهيز الطلب وخصم الكميات', 'success');
                 renderOrders();
             } catch (err) {
                 console.error(err);
@@ -852,8 +897,8 @@
                     <tr class="hover:bg-gray-50 transition border-b border-gray-50">
                         <td class="p-4 text-xs text-gray-500">${dateObj.toLocaleString('ar-EG')}</td>
                         <td class="p-4"><span class="px-2 py-1 text-xs font-bold rounded ${typeColors[ticket.type] || 'bg-gray-100'}">${typeLabels[ticket.type] || ticket.type}</span></td>
-                        <td class="p-4 font-bold text-gray-800">${ticket.contact || ticket.email}</td>
-                        <td class="p-4 text-gray-600 max-w-md truncate" title="${ticket.message}">${ticket.message}</td>
+                        <td class="p-4 font-bold text-gray-800">${escapeHtml(ticket.contact || ticket.email || '')}</td>
+                        <td class="p-4 text-gray-600 max-w-md truncate" title="${escapeHtml(ticket.message || '')}">${escapeHtml(ticket.message || '')}</td>
                         <td class="p-4 text-center">
                             <button onclick="deleteTicket('${ticket.id}')" class="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 w-8 h-8 rounded-full transition flex items-center justify-center">
                                 <i class="fas fa-trash"></i>
@@ -891,32 +936,41 @@
             const tbody = document.getElementById('products-table-body');
             document.getElementById('total-count').innerText = products.length;
             document.getElementById('featured-count').innerText = products.filter(p => p.isFeatured).length;
+            document.getElementById('products-loading')?.remove();
 
-            tbody.innerHTML = products.map(product => `
+            tbody.innerHTML = products.map(product => {
+                const safeName = escapeHtml(product.name);
+                const safeCategory = escapeHtml(getCategoryName(product.category));
+                const safeId = escapeHtml(String(product.id));
+                return `
                 <tr class="hover:bg-gray-50 transition border-b border-gray-50">
-                    <td class="p-4"><img src="${product.image}" class="w-12 h-12 object-contain rounded bg-white border"></td>
-                    <td class="p-4 font-bold text-gray-800">${product.name}</td>
+                    <td class="p-4"><img src="${product.image}" alt="${safeName}" class="w-12 h-12 object-contain rounded bg-white border"></td>
+                    <td class="p-4 font-bold text-gray-800">${safeName}</td>
                     <td class="p-4 font-bold">
-                        <span class="text-gradient-blue font-bold">$${product.price}</span>
-                        ${product.discountPrice ? `<br><span class="text-xs text-red-500 line-through">$${product.discountPrice}</span>` : ''}
+                        ${product.discountPrice ? `
+                            <span class="text-gradient-blue font-bold">${formatPrice(product.discountPrice)}</span>
+                            <br><span class="text-xs text-gray-400 line-through">${formatPrice(product.price)}</span>
+                        ` : `
+                            <span class="text-gradient-blue font-bold">${formatPrice(product.price)}</span>
+                        `}
                     </td>
                     <td class="p-4 font-bold text-center">
                         <span class="px-2 py-1 rounded ${product.quantity > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
                             ${product.quantity || 0}
                         </span>
                     </td>
-                    <td class="p-4"><span class="px-2 py-1 text-xs font-bold rounded bg-indigo-50 text-indigo-600">${getCategoryName(product.category)}</span></td>
+                    <td class="p-4"><span class="px-2 py-1 text-xs font-bold rounded bg-indigo-50 text-indigo-600">${safeCategory}</span></td>
                     <td class="p-4 text-center">
-                        <input type="checkbox" ${product.isFeatured ? 'checked' : ''} onchange="toggleFeatured('${product.id}')" class="form-checkbox h-5 w-5 text-indigo-600 rounded">
+                        <input type="checkbox" ${product.isFeatured ? 'checked' : ''} onchange="toggleFeatured('${safeId}')" class="form-checkbox h-5 w-5 text-indigo-600 rounded" aria-label="تحديد ${safeName} كمميز">
                     </td>
                     <td class="p-4 text-center">
                         <div class="flex items-center justify-center gap-2">
-                            <button onclick="editProduct('${product.id}')" class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center"><i class="fas fa-edit"></i></button>
-                            <button onclick="deleteProduct('${product.id}')" class="w-8 h-8 rounded-full bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center"><i class="fas fa-trash"></i></button>
+                            <button onclick="editProduct('${safeId}')" class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center" aria-label="تعديل ${safeName}"><i class="fas fa-edit"></i></button>
+                            <button onclick="deleteProduct('${safeId}')" class="w-8 h-8 rounded-full bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center" aria-label="حذف ${safeName}"><i class="fas fa-trash"></i></button>
                         </div>
                     </td>
                 </tr>
-            `).join('');
+            `}).join('');
         }
 
         // --- Categories ---
@@ -941,17 +995,20 @@
             const categories = ProductService.getCategories();
             const tbody = document.getElementById('category-table-body');
 
-            tbody.innerHTML = categories.map(cat => `
+            tbody.innerHTML = categories.map(cat => {
+                const safeName = escapeHtml(cat.name);
+                const safeId = escapeHtml(String(cat.id));
+                return `
                 <tr class="hover:bg-gray-50 transition">
-                    <td class="p-3 font-semibold text-gray-800">${cat.name}</td>
+                    <td class="p-3 font-semibold text-gray-800">${safeName}</td>
                     <td class="p-3 text-center">
                         <div class="flex items-center justify-center gap-2">
-                            <button onclick="openEditCategoryModal('${cat.id}', '${cat.name.replace(/'/g, "\\'")}')" 
+                            <button onclick="openEditCategoryModal('${safeId}', '${safeName.replace(/'/g, "\\'")}')" 
                                 class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center transition"
                                 title="تعديل">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button onclick="deleteCategory('${cat.id}')" 
+                            <button onclick="deleteCategory('${safeId}')" 
                                 class="w-8 h-8 rounded-full bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center transition"
                                 title="حذف">
                                 <i class="fas fa-trash"></i>
@@ -959,7 +1016,7 @@
                         </div>
                     </td>
                 </tr>
-            `).join('');
+            `}).join('');
         }
 
         async function addNewCategory() {
@@ -1117,7 +1174,7 @@
                 name: name,
                 price: price,
                 discountPrice: discountPrice, // Save it
-                category: parseInt(document.getElementById('product-category').value), // Convert to integer
+                category: document.getElementById('product-category').value,
                 quantity: quantity,
                 description: document.getElementById('product-desc').value,
                 image: imageBase64 || 'image/1.png',

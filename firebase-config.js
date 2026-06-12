@@ -1,4 +1,6 @@
 // Firebase Configuration
+// IMPORTANT: You MUST configure Firestore Security Rules in Firebase Console > Firestore > Rules
+// Otherwise anyone can read/write/delete your database
 const firebaseConfig = {
   apiKey: "AIzaSyC4zsAlaijPhOooUN5FQup4DQfDHap3hbU",
   authDomain: "hose-3d55d.firebaseapp.com",
@@ -9,11 +11,15 @@ const firebaseConfig = {
   measurementId: "G-N01ZCNHMKH"
 };
 
-// Initialize Firebase using Compat SDK
 firebase.initializeApp(firebaseConfig);
 
-// Initialize Firestore
 const db = firebase.firestore();
 
-// Make db global for other scripts to use
+// Enable offline persistence for instant subsequent page loads
+db.enablePersistence({ synchronizeTabs: true }).catch(err => {
+    if (err.code !== 'failed-precondition') {
+        console.warn('Firestore persistence:', err.message);
+    }
+});
+
 window.db = db;

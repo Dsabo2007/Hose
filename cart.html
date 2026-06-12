@@ -6,7 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>سلة المشتريات - متجر هوس بوردكيمز</title>
     <link rel="icon" type="image/png" href="image/Mascot.png">
+    <meta name="description" content="سلة المشتريات - متجر هوس بوردكيمز">
+    <meta name="keywords" content="هوس بوردكيمز, سلة مشتريات, اتمام الشراء">
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
     <!-- Supabase SDK -->
     <!-- Firebase SDKs -->
@@ -18,24 +21,25 @@
 
 <body class="bg-gray-50 flex flex-col min-h-screen">
 
-    <nav class="glass sticky top-0 z-50 shadow-sm">
+    <nav class="glass sticky top-0 z-50 shadow-sm" role="navigation" aria-label="القائمة الرئيسية">
         <div class="container mx-auto px-4 py-3 flex justify-between items-center">
-            <a href="index.html" class="flex items-center gap-2">
-                <img src="image/Arabic logo.png" alt="Logo" class="h-24 w-auto">
+            <a href="index.html" class="flex items-center gap-2" aria-label="الصفحة الرئيسية">
+                <img src="image/Arabic logo.png" alt="شعار متجر هوس بوردكيمز" class="h-24 w-auto">
             </a>
-            <div class="hidden md:flex gap-6  font-medium">
-                <a href="index.html" class="text-gray-600 hover:text-indigo-800 transition">الرئيسية</a>
-                <a href="products.html" class="text-gray-600 hover:text-indigo-800 transition">المنتجات</a>
+            <div class="hidden md:flex gap-6 font-medium" role="menubar">
+                <a href="index.html" class="text-gray-600 hover:text-indigo-800 transition" role="menuitem">الرئيسية</a>
+                <a href="products.html" class="text-gray-600 hover:text-indigo-800 transition" role="menuitem">المنتجات</a>
             </div>
             <div class="flex items-center gap-4">
-                <a href="cart.html" class="relative hover-scale">
+                <a href="cart.html" class="relative hover-scale" aria-label="سلة المشتريات" aria-current="page">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-indigo-700" fill="none"
-                        viewBox="0 0 24 24" stroke="currentColor">
+                        viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
                     <span id="cart-count"
-                        class="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center hidden">0</span>
+                        class="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center hidden"
+                        aria-live="polite">0</span>
                 </a>
             </div>
         </div>
@@ -219,12 +223,13 @@
             container.innerHTML = State.cart.map(item => {
                 const itemTotal = item.price * item.quantity;
                 subtotal += itemTotal;
+                const safeName = escapeHtml(item.name);
                 return `
             <div class="flex flex-col sm:flex-row items-center gap-4 py-6 border-b border-gray-100 last:border-0 fade-in bg-white rounded-lg p-2 mb-2 sm:mb-0">
-                <img src="${item.image}" alt="${item.name}" class="w-20 h-20 object-contain bg-gray-50 rounded-lg p-2 border border-gray-100">
+                <img src="${item.image}" alt="${safeName}" class="w-20 h-20 object-contain bg-gray-50 rounded-lg p-2 border border-gray-100">
                     <div class="flex-grow text-center sm:text-right w-full sm:w-auto">
-                        <h3 class="font-bold text-gray-800 mb-1">${item.name}</h3>
-                        <p class="text-gray-500 text-xs bg-gray-100 inline-block px-2 py-1 rounded">${getCategoryName(item.category)}</p>
+                        <h3 class="font-bold text-gray-800 mb-1">${safeName}</h3>
+                        <p class="text-gray-500 text-xs bg-gray-100 inline-block px-2 py-1 rounded">${escapeHtml(getCategoryName(item.category))}</p>
                     </div>
 
                     <div class="flex items-center justify-between w-full sm:w-auto gap-6 mt-2 sm:mt-0">
@@ -253,8 +258,6 @@
 
             totalEl.innerHTML = totalFormatted;
 
-            totalEl.innerHTML = totalFormatted;
-
             if (mobileTotalEl) mobileTotalEl.innerText = totalFormatted;
 
             // Render Summary Items
@@ -262,10 +265,11 @@
             if (summaryContainer) {
                 summaryContainer.innerHTML = State.cart.map(item => {
                     const itemTotal = item.price * item.quantity;
+                    const safeName = escapeHtml(item.name);
                     return `
                         <div class="flex justify-between items-center text-sm group">
                             <div class="flex flex-col">
-                                <span class="font-medium text-gray-700">${item.name}</span>
+                                <span class="font-medium text-gray-700">${safeName}</span>
                                 <span class="text-xs text-gray-400">x${item.quantity}</span>
                             </div>
                             <span class="font-bold text-gray-800">${formatPrice(itemTotal)}</span>
@@ -359,13 +363,14 @@
                         address: document.getElementById('address').value
                     };
 
+                    const orderTotal = State.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
                     const orderData = {
                         date: new Date().toISOString(),
                         customer_name: customerData.name,
                         customer_phone: customerData.phone,
                         customer_governorate: customerData.governorate,
-                        items: State.cart, // Supabase stores JSON automatically
-                        total: document.getElementById('total').innerText,
+                        items: State.cart,
+                        total: orderTotal,
                         status: 'new'
                     };
 
@@ -375,9 +380,8 @@
                     
                     const docRef = await db.collection('orders').add(orderData);
 
-                    // Success handling
                     const orderForDisplay = { ...orderData, id: docRef.id, customer: customerData };
-                    localStorage.setItem('lastOrderDetails', JSON.stringify(orderForDisplay));
+                    sessionStorage.setItem('lastOrderDetails', JSON.stringify(orderForDisplay));
 
                     // Clear Cart
                     localStorage.removeItem('boardGameCart');

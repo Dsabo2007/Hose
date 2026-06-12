@@ -6,7 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>متجر هوس بوردكيمز - عالمك الجديد</title>
     <link rel="icon" type="image/png" href="image/Mascot.png">
+    <meta name="description" content="متجر هوس بوردكيمز - أفضل الألعاب اللوحية في العراق. تسوق ألعاب استراتيجية وعائلية ممتعة بأفضل الأسعار.">
+    <meta name="keywords" content="هوس بوردكيمز, العاب لوحية, العاب استراتيجية, بوردكيمز, متجر العاب">
+    <meta property="og:title" content="متجر هوس بوردكيمز - عالمك الجديد">
+    <meta property="og:description" content="اكتشف أفضل هوس بوردكيمز التي تجمع العائلة والأصدقاء">
+    <meta property="og:image" content="image/Mascot.png">
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
     <!-- Supabase SDK -->
     <!-- Firebase SDKs -->
@@ -38,40 +44,38 @@
 <body class="bg-gray-50 text-gray-800">
 
     <!-- Navigation -->
-    <nav class="glass sticky top-0 z-50 shadow-sm">
+    <nav class="glass sticky top-0 z-50 shadow-sm" role="navigation" aria-label="القائمة الرئيسية">
         <div class="container mx-auto px-4 py-3 flex justify-between items-center">
-            <a href="index.html" class="flex items-center gap-2">
-                <img src="image/Arabic logo.png" alt="Logo" class="h-24 w-auto">
+            <a href="index.html" class="flex items-center gap-2" aria-label="الصفحة الرئيسية">
+                <img src="image/Arabic logo.png" alt="شعار متجر هوس بوردكيمز" class="h-24 w-auto">
             </a>
-            <div class="hidden md:flex gap-6  font-medium">
-                <a href="index.html" class="text-gradient-blue font-bold hover:opacity-80 transition">الرئيسية</a>
-                <a href="products.html" class="text-gray-600 hover:text-indigo-800 transition">المنتجات</a>
-                <!-- About Us link removed -->
+            <div class="hidden md:flex gap-6 font-medium" role="menubar">
+                <a href="index.html" class="text-gradient-blue font-bold hover:opacity-80 transition" role="menuitem" aria-current="page">الرئيسية</a>
+                <a href="products.html" class="text-gray-600 hover:text-indigo-800 transition" role="menuitem">المنتجات</a>
             </div>
             <div class="flex items-center gap-4">
-                <a href="cart.html" class="relative hover-scale">
+                <a href="cart.html" class="relative hover-scale" aria-label="سلة المشتريات">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-indigo-700" fill="none"
-                        viewBox="0 0 24 24" stroke="currentColor">
+                        viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
                     <span id="cart-count"
-                        class="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center hidden">0</span>
+                        class="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center hidden"
+                        aria-live="polite">0</span>
                 </a>
-                <button class="md:hidden text-gray-600 focus:outline-none" id="mobile-menu-btn">
+                <button class="md:hidden text-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-lg" id="mobile-menu-btn" aria-label="القائمة المتنقلة" aria-expanded="false">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor">
+                        stroke="currentColor" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M4 6h16M4 12h16M4 18h16" />
                     </svg>
                 </button>
             </div>
         </div>
-        <!-- Mobile Menu -->
-        <div id="mobile-menu" class="hidden md:hidden bg-white border-t border-gray-100 p-4 shadow-lg absolute w-full">
-            <a href="index.html" class="block py-2 text-indigo-600 font-bold">الرئيسية</a>
-            <a href="products.html" class="block py-2 text-gray-600 hover:text-indigo-600">المنتجات</a>
-            <!-- About Us link removed -->
+        <div id="mobile-menu" class="hidden md:hidden bg-white border-t border-gray-100 p-4 shadow-lg absolute w-full" role="menu" aria-label="القائمة المتنقلة">
+            <a href="index.html" class="block py-2 text-indigo-600 font-bold" role="menuitem">الرئيسية</a>
+            <a href="products.html" class="block py-2 text-gray-600 hover:text-indigo-600" role="menuitem">المنتجات</a>
         </div>
     </nav>
 
@@ -230,18 +234,9 @@
 
     <script src="script.js"></script>
     <script>
-        // Inline script to init home page specific logic
         document.addEventListener('DOMContentLoaded', async () => {
             await ProductService.init();
             renderFeaturedProducts();
-
-            // Mobile Menu
-            const btn = document.getElementById('mobile-menu-btn');
-            const menu = document.getElementById('mobile-menu');
-
-            btn.addEventListener('click', () => {
-                menu.classList.toggle('hidden');
-            });
         });
     </script>
 </body>

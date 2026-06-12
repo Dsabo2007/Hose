@@ -3,36 +3,21 @@
  */
 
 // State Management
-// State Management
 const State = {
     cart: JSON.parse(localStorage.getItem('boardGameCart')) || [],
-    currencyCode: 'IQD' // Enforce Single Currency
+    currencyCode: 'IQD'
 };
 
-// --- Currency Logic ---
-function setCurrency(code) {
-    // Disabled
-    console.log('Currency switching disabled');
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.appendChild(document.createTextNode(text));
+    return div.innerHTML;
 }
 
 function formatPrice(basePrice) {
-    // Always format as IQD
-    // Assuming basePrice is in IQD. If basePrice was in USD, we might need conversion.
-    // However, user wants "One Currency". Usually this means base prices *are* in that currency.
-    // If the database (products.js) has prices in USD, we need to know the rate.
-    // But usually "Single Currency" implies we just treat the number as is, or we convert once.
-    // Let's assume the user will input prices in IQD or wants the existing numbers to be treated as IQD.
-    // Wait, previous code had `currency.rate`.
-    // If I just remove conversion, a price of "50" (USD) becomes "50 IQD" which is wrong.
-    // I should check if there is a conversion needed.
-    // The previous default was USD.
-    // If the user inputs "25000" for a game, it works.
-    // If they input "50", it displays "50 د.ع".
-    // I will assume the user intends to update product prices to IQD or they are already entered as such for the new "One Currency" policy.
-    // I'll just format the number.
-
-    // Format with commas, no decimals for IQD
-    return Number(basePrice).toLocaleString('en-US') + ' د.ع';
+    const num = Number(basePrice);
+    if (isNaN(num)) return '0 د.ع';
+    return num.toLocaleString('en-US') + ' د.ع';
 }
 
 // --- Cart Logic ---
@@ -85,9 +70,12 @@ function addToCart(productId) {
             return;
         }
         State.cart.push({
-            ...product,
-            price: finalPrice, // Store the effective price
-            originalPriceToCheck: product.price, // Keep ref to original if needed
+            id: product.id,
+            name: product.name,
+            price: finalPrice,
+            originalPrice: product.price,
+            image: product.image,
+            category: product.category,
             quantity: 1
         });
     }
@@ -130,42 +118,6 @@ function updateQuantity(productId, change) {
 }
 
 // --- Rendering Logic ---
-function renderFeaturedProducts() {
-    const container = document.getElementById('featured-products-grid');
-    if (!container) return;
-
-    const featured = ProductService.getAll().filter(p => p.isFeatured).slice(0, 4);
-
-    container.innerHTML = featured.map(product => createProductCard(product)).join('');
-}
-
-function renderProducts(productsToRender) {
-    const container = document.getElementById('products-grid');
-    if (!container) return;
-
-    const list = productsToRender || ProductService.getAll();
-
-    if (list.length === 0) {
-        container.innerHTML = `<div class="col-span-full text-center py-20 text-gray-500">لا توجد منتجات.</div>`;
-        return;
-    }
-
-    console.log(`Rendering ${list.length} products...`);
-
-    try {
-        container.innerHTML = list.map(product => {
-            try {
-                return createProductCard(product);
-            } catch (err) {
-                console.error("Error creating card for product:", product, err);
-                return '';
-            }
-        }).join('');
-    } catch (e) {
-        console.error("Critical error in renderProducts:", e);
-        container.innerHTML = `<div class="col-span-full text-center py-10 text-red-500">حدث خطأ أثناء عرض المنتجات.</div>`;
-    }
-}
 
 function createProductCard(product) {
     const isOutOfStock = (product.quantity || 0) <= 0;
@@ -173,10 +125,13 @@ function createProductCard(product) {
     const hasDiscount = product.discountPrice && product.discountPrice < product.price;
     const discountPercent = hasDiscount ? Math.round(((product.price - product.discountPrice) / product.price) * 100) : 0;
 
+    const safeName = escapeHtml(product.name);
+    const safeDesc = escapeHtml(product.description || '');
+    const safeCategory = escapeHtml(getCategoryName(product.category));
     return `
-    <div class="product-card bg-white rounded-2xl border border-gray-100 overflow-hidden flex flex-col h-full group relative" data-aos="fade-up">
+    <div class="product-card bg-white rounded-2xl border border-gray-100 overflow-hidden flex flex-col h-full group relative" data-aos="fade-up" role="article" aria-label="${safeName}">
         <div class="product-image-container relative h-64 bg-gray-50 overflow-hidden">
-            <img src="${product.image}" alt="${product.name}" class="w-full h-full object-contain p-8">
+            <img src="${product.image}" alt="${safeName}" class="w-full h-full object-contain p-8" loading="lazy">
             
             <div class="absolute top-4 right-4 flex flex-col gap-2 z-10 w-full px-4 items-end">
                 ${product.isFeatured ? '<span class="bg-gradient-to-r from-yellow-400 to-yellow-500 text-indigo-900 text-xs font-black px-3 py-1.5 rounded-full shadow-lg self-end">الجديد ★</span>' : ''}
@@ -187,7 +142,7 @@ function createProductCard(product) {
                 ${isOutOfStock ? '<span class="bg-gray-800 text-white text-xs font-black px-3 py-1.5 rounded-full shadow-lg self-end">نفذت الكمية</span>' : ''}
             </div>
             
-            <a href="product-details.html?id=${product.id}" class="absolute inset-0 bg-indigo-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-[2px]">
+            <a href="product-details.html?id=${product.id}" class="absolute inset-0 bg-indigo-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-[2px]" aria-label="عرض تفاصيل ${safeName}">
                  <span class="transform translate-y-8 group-hover:translate-y-0 transition-transform duration-500 bg-white text-indigo-700 px-6 py-2.5 rounded-full font-bold shadow-2xl flex items-center gap-2">
                     <i class="fas fa-eye"></i> التفاصيل
                  </span>
@@ -196,7 +151,7 @@ function createProductCard(product) {
         
         <div class="p-6 flex-grow flex flex-col relative z-20 bg-white">
             <div class="flex justify-between items-center mb-3">
-                <span class="text-xs font-bold text-indigo-500 bg-indigo-50 px-2.5 py-1 rounded-md uppercase tracking-wider">${getCategoryName(product.category)}</span>
+                <span class="text-xs font-bold text-indigo-500 bg-indigo-50 px-2.5 py-1 rounded-md uppercase tracking-wider">${safeCategory}</span>
                 <div class="flex flex-col items-end">
                     ${hasDiscount ? `
                         <span class="text-xs line-through text-gray-400 decoration-red-500 decoration-1 mb-0.5">${formatPrice(product.price)}</span>
@@ -208,10 +163,10 @@ function createProductCard(product) {
             </div>
             
             <h3 class="font-bold text-xl text-gray-800 mb-2 leading-tight">
-                <a href="product-details.html?id=${product.id}" class="hover:text-indigo-600 transition">${product.name}</a>
+                <a href="product-details.html?id=${product.id}" class="hover:text-indigo-600 transition">${safeName}</a>
             </h3>
             
-            <p class="text-gray-500 text-sm line-clamp-2 mb-6 flex-grow leading-relaxed">${product.description}</p>
+            <p class="text-gray-500 text-sm line-clamp-2 mb-6 flex-grow leading-relaxed">${safeDesc}</p>
             
             ${isOutOfStock ? `
              <button disabled class="w-full bg-gray-300 text-gray-500 font-bold py-3 rounded-xl shadow-none cursor-not-allowed flex items-center justify-center gap-2">
@@ -237,11 +192,23 @@ function renderProducts(products) {
     if (!grid) return;
 
     if (!products || products.length === 0) {
-        grid.innerHTML = '\u003cdiv class="col-span-full text-center py-20 text-gray-400"\u003e\n            \u003ci class="fas fa-box-open text-6xl mb-4 opacity-50"\u003e\u003c/i\u003e\n            \u003cp class="text-xl font-bold"\u003e\u0644\u0627 \u062a\u0648\u062c\u062f \u0645\u0646\u062a\u062c\u0627\u062a\u003c/p\u003e\n        \u003c/div\u003e';
+        grid.innerHTML = '<div class="col-span-full text-center py-20 text-gray-400"><i class="fas fa-box-open text-6xl mb-4 opacity-50"></i><p class="text-xl font-bold">لا توجد منتجات</p></div>';
         return;
     }
 
-    grid.innerHTML = products.map(p => createProductCard(p)).join('');
+    try {
+        grid.innerHTML = products.map(p => {
+            try {
+                return createProductCard(p);
+            } catch (err) {
+                console.error("Error creating card for product:", p, err);
+                return '';
+            }
+        }).join('');
+    } catch (e) {
+        console.error("Critical error in renderProducts:", e);
+        grid.innerHTML = '<div class="col-span-full text-center py-10 text-red-500">حدث خطأ أثناء عرض المنتجات</div>';
+    }
 }
 
 function renderFeaturedProducts() {
@@ -251,7 +218,7 @@ function renderFeaturedProducts() {
     const featured = ProductService.getAll().filter(p => p.isFeatured);
 
     if (!featured || featured.length === 0) {
-        container.innerHTML = '\u003cdiv class="col-span-full text-center py-10 text-gray-400"\u003e\n            \u003cp\u003e\u0644\u0627 \u062a\u0648\u062c\u062f \u0645\u0646\u062a\u062c\u0627\u062a \u0645\u0645\u064a\u0632\u0629 \u062d\u0627\u0644\u064a\u0627\u064b\u003c/p\u003e\n        \u003c/div\u003e';
+        container.innerHTML = '<div class="col-span-full text-center py-10 text-gray-400"><p>لا توجد منتجات مميزة حالياً</p></div>';
         return;
     }
 
@@ -309,8 +276,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (btn && menu) {
         btn.addEventListener('click', () => {
-            if (menu.tagName === 'ASIDE') menu.classList.toggle('hidden');
-            else menu.classList.toggle('hidden');
+            const isHidden = menu.classList.contains('hidden');
+            menu.classList.toggle('hidden');
+            if (btn.getAttribute('aria-expanded') !== null) {
+                btn.setAttribute('aria-expanded', isHidden);
+            }
         });
     }
 

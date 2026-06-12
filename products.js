@@ -49,15 +49,26 @@ const ProductService = {
             db.collection('products').get()
         ]);
 
-        this.categories = catSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        this.products = prodSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const freshProducts = prodSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const freshCategories = catSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-        this._cacheSave();
-        this.initialized = true;
-        console.log('ProductService loaded', this.products.length, 'products');
+        if (freshProducts.length > 0) {
+            this.products = freshProducts;
+            this.categories = freshCategories;
+            this._cacheSave();
+            this.initialized = true;
+            console.log('ProductService loaded', this.products.length, 'products');
+        } else if (this.products.length === 0) {
+            this.products = freshProducts;
+            this.categories = freshCategories;
+            console.log('ProductService loaded 0 products');
+        } else {
+            console.log('ProductService: keeping cached data (empty Firestore result)');
+        }
     },
 
     _cacheSave: function () {
+        if (this.products.length === 0) return;
         try {
             const data = {
                 products: this.products,

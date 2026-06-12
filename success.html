@@ -6,27 +6,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>شكراً لطلبك - متجر هوس بوردكيمز</title>
     <link rel="icon" type="image/png" href="image/Mascot.png">
+    <meta name="description" content="تم الطلب بنجاح - متجر هوس بوردكيمز">
+    <meta name="keywords" content="هوس بوردكيمز, طلب ناجح, شكرا لطلبك">
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
     <script src="products.js"></script>
 </head>
 
 <body class="bg-gray-50 flex flex-col min-h-screen">
 
-    <nav class="glass sticky top-0 z-50 shadow-sm">
+    <nav class="glass sticky top-0 z-50 shadow-sm" role="navigation" aria-label="القائمة الرئيسية">
         <div class="container mx-auto px-4 py-3 flex justify-between items-center">
-            <a href="index.html" class="flex items-center gap-2">
-                <img src="image/Arabic logo.png" alt="Logo" class="h-24 w-auto">
+            <a href="index.html" class="flex items-center gap-2" aria-label="الصفحة الرئيسية">
+                <img src="image/Arabic logo.png" alt="شعار متجر هوس بوردكيمز" class="h-24 w-auto">
             </a>
-            <div class="hidden md:flex gap-6  font-medium">
-                <a href="index.html" class="text-gray-600 hover:text-indigo-800 transition">الرئيسية</a>
-                <a href="products.html" class="text-gray-600 hover:text-indigo-800 transition">المنتجات</a>
+            <div class="hidden md:flex gap-6 font-medium" role="menubar">
+                <a href="index.html" class="text-gray-600 hover:text-indigo-800 transition" role="menuitem">الرئيسية</a>
+                <a href="products.html" class="text-gray-600 hover:text-indigo-800 transition" role="menuitem">المنتجات</a>
             </div>
             <div class="flex items-center gap-4">
-                <!-- Empty Cart Icon -->
-                <a href="cart.html" class="relative hover-scale">
+                <a href="cart.html" class="relative hover-scale" aria-label="سلة المشتريات">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-indigo-700" fill="none"
-                        viewBox="0 0 24 24" stroke="currentColor">
+                        viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
@@ -71,37 +73,28 @@
     <script src="script.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // 1. Get cart from local storage BEFORE clearing (or assume script.js loaded it into State)
-            // However, script.js initializes State on load.
-            // We want to show what was just bought.
-
-            // Check if we have a recent order stored? 
-            // Ideally we pass data, but for simplicity, we will read State.cart, display it, then clear it.
-
             const summaryDiv = document.getElementById('order-summary');
 
-            // Try to get the last order details passed from checkout
-            const lastOrderStr = localStorage.getItem('lastOrderDetails');
             let itemsToRender = [];
-            let totalToRender = 0;
+            let lastOrder = null;
 
+            const lastOrderStr = sessionStorage.getItem('lastOrderDetails') || localStorage.getItem('lastOrderDetails');
             if (lastOrderStr) {
-                const lastOrder = JSON.parse(lastOrderStr);
-                itemsToRender = lastOrder.items || [];
-                // Parse total from string "$100" to number if needed, or just use the string. 
-                // The previous code calculated total from items. Let's do that to be safe and consistent with formatPrice.
-                // Actually, lastOrder.items has the price.
+                try {
+                    lastOrder = JSON.parse(lastOrderStr);
+                    itemsToRender = lastOrder.items || [];
+                    localStorage.removeItem('lastOrderDetails');
+                    sessionStorage.removeItem('lastOrderDetails');
+                } catch (e) {
+                    console.error('Failed to parse order details', e);
+                }
             }
 
-            // Fallback: Check State.cart (though it's likely empty due to checkout clearing it)
             if (itemsToRender.length === 0 && State.cart.length > 0) {
                 itemsToRender = State.cart;
-                // If we found items in cart here, it means they weren't cleared yet (unlikely with new flow, but good fallback)
                 State.cart = [];
                 saveCart();
             }
-
-
 
             if (itemsToRender.length > 0) {
                 let html = '<ul class="space-y-3">';
@@ -110,12 +103,13 @@
                 itemsToRender.forEach(item => {
                     const itemTotal = item.price * item.quantity;
                     total += itemTotal;
+                    const safeName = escapeHtml(item.name);
 
                     html += `
                         <li class="flex justify-between items-center text-sm">
                             <span class="flex items-center gap-2">
                                 <span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-0.5 rounded-full">${item.quantity}x</span> 
-                                ${item.name}
+                                ${safeName}
                             </span>
                             <span class="font-bold text-gray-700">${formatPrice(itemTotal)}</span>
                         </li>
@@ -130,19 +124,15 @@
                     </div>
                  `;
 
-                // Add Customer Details if available
-                if (lastOrderStr) {
-                    const lastOrder = JSON.parse(lastOrderStr);
-                    if (lastOrder.customer) {
-                        html += `
-                            <div class="mt-6 border-t border-gray-200 pt-4 text-xs text-gray-500">
-                                <p class="font-bold text-gray-700 mb-1">تفاصيل الشحن:</p>
-                                <p>${lastOrder.customer.name}</p>
-                                <p>${lastOrder.customer.phone}</p>
-                                <p>${lastOrder.customer.governorate}, ${lastOrder.customer.address}</p>
-                            </div>
-                         `;
-                    }
+                if (lastOrder && lastOrder.customer) {
+                    html += `
+                        <div class="mt-6 border-t border-gray-200 pt-4 text-xs text-gray-500">
+                            <p class="font-bold text-gray-700 mb-1">تفاصيل الشحن:</p>
+                            <p>${escapeHtml(lastOrder.customer.name)}</p>
+                            <p>${escapeHtml(lastOrder.customer.phone)}</p>
+                            <p>${escapeHtml(lastOrder.customer.governorate)}, ${escapeHtml(lastOrder.customer.address)}</p>
+                        </div>
+                     `;
                 }
 
                 summaryDiv.innerHTML += html;
