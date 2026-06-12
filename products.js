@@ -5,24 +5,85 @@ const ProductService = {
     orders: [],
 
     initialized: false,
+    _initPromise: null,
 
-    // Initialize: Fetch data from Firebase
     init: async function () {
         if (this.initialized) return;
+        if (this._initPromise) return this._initPromise;
+
+        this._initPromise = this._doInit();
+        return this._initPromise;
+    },
+
+    refresh: async function () {
+        this.initialized = false;
+        this._initPromise = null;
+        try { localStorage.removeItem('bg_cache'); } catch (e) { /* ignore */ }
+        return this.init();
+    },
+
+    _doInit: async function () {
         console.log('Initializing ProductService...');
         try {
-            // Fetch Categories
-            const catSnapshot = await db.collection('categories').get();
-            this.categories = catSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            // Try localStorage cache first for instant response
+            if (this._cacheLoad()) {
+                this.initialized = true;
+                // Background Firestore refresh without blocking the caller
+                this._fetchFresh().catch(e => console.error('Background refresh:', e));
+                return;
+            }
 
-            // Fetch Products
-            const prodSnapshot = await db.collection('products').get();
-            this.products = prodSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-            console.log('ProductService initialized with', this.products.length, 'products');
-            this.initialized = true;
+            // No cache available: fetch from Firestore (parallelized)
+            await this._fetchFresh();
         } catch (err) {
-            console.error('Error initializing ProductService:', err);
+            this._initPromise = null;
+            if (this.products.length === 0) {
+                console.error('Error initializing ProductService:', err);
+            }
+        }
+    },
+
+    _fetchFresh: async function () {
+        const [catSnapshot, prodSnapshot] = await Promise.all([
+            db.collection('categories').get(),
+            db.collection('products').get()
+        ]);
+
+        this.categories = catSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        this.products = prodSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        this._cacheSave();
+        this.initialized = true;
+        console.log('ProductService loaded', this.products.length, 'products');
+    },
+
+    _cacheSave: function () {
+        try {
+            const data = {
+                products: this.products,
+                categories: this.categories,
+                timestamp: Date.now()
+            };
+            localStorage.setItem('bg_cache', JSON.stringify(data));
+        } catch (e) {
+            // localStorage full or unavailable
+        }
+    },
+
+    _cacheLoad: function () {
+        try {
+            const raw = localStorage.getItem('bg_cache');
+            if (!raw) return false;
+            const cache = JSON.parse(raw);
+            const TTL = 5 * 60 * 1000;
+            if (Date.now() - cache.timestamp > TTL) return false;
+            if (!Array.isArray(cache.products) || !Array.isArray(cache.categories)) return false;
+
+            this.products = cache.products;
+            this.categories = cache.categories;
+            return true;
+        } catch (e) {
+            return false;
         }
     },
 
