@@ -514,7 +514,8 @@
         }
 
         function initAuth() {
-            if (!localStorage.getItem('adminPassword')) {
+            const existing = localStorage.getItem('adminPassword');
+            if (!existing || !existing.startsWith('h')) {
                 const defaultPw = 'ssdssd44';
                 localStorage.setItem('adminPassword', hashPassword(defaultPw));
             }
@@ -530,7 +531,16 @@
         function handleLogin(e) {
             e.preventDefault();
             const input = document.getElementById('login-password');
-            const storedHash = localStorage.getItem('adminPassword');
+
+            // Auto-fix: if stored value is not a hash (old plaintext), re-hash it
+            let storedHash = localStorage.getItem('adminPassword');
+            if (storedHash && !storedHash.startsWith('h')) {
+                localStorage.setItem('adminPassword', hashPassword(storedHash));
+                storedHash = localStorage.getItem('adminPassword');
+            } else if (!storedHash) {
+                localStorage.setItem('adminPassword', hashPassword('ssdssd44'));
+                storedHash = localStorage.getItem('adminPassword');
+            }
 
             if (hashPassword(input.value) === storedHash) {
                 sessionStorage.setItem('adminSession', generateSessionToken());
@@ -568,7 +578,12 @@
             const newObj = document.getElementById('new-password');
             const confirmObj = document.getElementById('confirm-password');
 
-            const storedHash = localStorage.getItem('adminPassword');
+            // Auto-fix stored value if it's old plaintext
+            let storedHash = localStorage.getItem('adminPassword');
+            if (storedHash && !storedHash.startsWith('h')) {
+                localStorage.setItem('adminPassword', hashPassword(storedHash));
+                storedHash = localStorage.getItem('adminPassword');
+            }
 
             if (hashPassword(currentObj.value) !== storedHash) {
                 showToast('كلمة المرور الحالية غير صحيحة', 'error');
